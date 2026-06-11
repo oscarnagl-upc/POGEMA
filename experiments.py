@@ -41,14 +41,14 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from config_exp import (
+from config import (
     RESULTS_DIR, PLOTS_DIR, RENDERS_DIR, SVG_ANALYSIS_DIR, QTABLES_DIR, BASE,
     TRAIN_SEEDS, UNSEEN_SEEDS, EPSILON_GRID, GAMMA_GRID,
     DENSITY_LOW, DENSITY_MID, SIZES, DEFAULT_EPOCHS, SANITY_EPOCHS,
     SOLUTION_CONCEPTS,
 )
-from viz import plot_curve, plot_heatmap, plot_bars, plot_grouped_bars, save_json
-from svg_analysis import analyze_svgs
+from plots import plot_curve, plot_heatmap, plot_bars, plot_grouped_bars, save_json
+from svg import analyze_svgs
 
 # --- Codebase de los profesores ---------------------------------------------
 from game_model import GameModel
