@@ -13,9 +13,12 @@ y tres ampliaciones para nota extra.
 ### Instalación
 
 ```bash
-conda create -n sid_p3 python=3.10 -y
-conda activate sid_p3
+conda create -n POGEMA python=3.10 -y
+conda activate POGEMA
 pip install -r requirements.txt
+
+# RECOMENDADO (comprueba que el entorno baseline funciona): 
+bash python sanity_check.py
 ```
 
 > **Nota sobre POGEMA.** El código es compatible con `pogema==1.2.2` (la del
@@ -40,9 +43,9 @@ pip install -r requirements.txt
 | Fichero | Responsabilidad |
 |---|---|
 | `experiments.py` | Batería completa: entrenamiento, los 10 experimentos y el orquestador |
-| `config_exp.py` | Constantes y parámetros del estudio (densidades, grids, tamaños) |
-| `viz.py` | Generación de plots y persistencia de resultados en JSON |
-| `svg_analysis.py` | Análisis automático de trazas SVG (deadlocks, colisiones, cesiones) |
+| `config.py` | Constantes y parámetros del estudio (densidades, grids, tamaños) |
+| `plots.py` | Generación de plots y persistencia de resultados en JSON |
+| `svg.py` | Análisis automático de trazas SVG (deadlocks, colisiones, cesiones) |
 | `sanity_check.py` | Verificación rápida de que el entorno baseline funciona |
 
 ## Cambios aplicados al código base

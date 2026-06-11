@@ -33,7 +33,7 @@ estacionariedad que Q-Learning necesita para converger.
 | N agentes | 2 | Restriccion del enunciado |
 | `obs_to_state` | la del baseline | Restriccion del enunciado |
 | `num_states` | 1024 | Consecuencia directa de `obs_to_state`: codifica obstaculos (16) x otros agentes (16) x objetivo (4). Es independiente del tamano del mapa porque la observacion es de radio 1 (solo el vecindario local) |
-| `alpha` (learning rate) | 0.01 | **Decision debatida.** Los profesores lo fijan a 0.01 en el `exp_config` (el 0.5 del constructor de JALGT nunca llega a usarse). Es un valor conservador y deliberado: la Q-table conjunta de JAL-GT tiene un target inestable (depende de la politica conjunta, que cambia en cada paso), y un alpha bajo amortigua esas oscilaciones. **No lo tocamos** porque el enunciado no pide estudiar alpha y cambiarlo introduciria una variable no controlada |
+| `alpha` (learning rate) | 0.01 | **Decision debatida.** Los profesores lo fijan a 0.01 en el `config.py` (el 0.5 del constructor de JALGT nunca llega a usarse). Es un valor conservador y deliberado: la Q-table conjunta de JAL-GT tiene un target inestable (depende de la politica conjunta, que cambia en cada paso), y un alpha bajo amortigua esas oscilaciones. **No lo tocamos** porque el enunciado no pide estudiar alpha y cambiarlo introduciria una variable no controlada |
 | `episodes_per_epoch` | 10 | Configuracion baseline. Da resolucion suficiente en las curvas sin generar ruido |
 | `maps` | 10 | Con 10 mapas y 10 episodios/epoch, cada mapa se ve ~1 vez por epoch: equilibrio entre diversidad y frecuencia de visita |
 | Seeds | 0..9 (10 seeds) | Minimo razonable para estimar media y varianza inter-seed sin depender de una semilla afortunada |
