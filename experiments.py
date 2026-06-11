@@ -13,7 +13,7 @@ módulos auxiliares con separación de responsabilidades clara:
   svg_analysis.py  protocolo de análisis automático de trazas SVG (autónomo)
 
 Flujo de experimentos OBLIGATORIOS:
-    EXP 1  Estudio conjunto (epsilon, gamma)   -> fija (eps*, gamma*)
+  EXP 1  Estudio conjunto (epsilon, gamma)   -> fija (eps*, gamma*)
   EXP 2  Transferencia de gamma a IQL
   EXP 3  Validación del par óptimo en 10x10
   EXP 4  IQL vs JAL-GT, densidad baja (0.1)
@@ -27,29 +27,28 @@ Ampliaciones (+2 puntos), lanzadas con --extensions:
   EXP 10 Parejas heterogéneas de conceptos de solución   (+0.5)
 
 Uso:
-    python experiments.py              # obligatorios + ampliaciones (200 epochs)
-    python experiments.py --sanity     # verificación rápida del pipeline (8 epochs)
-    python experiments.py --base       # solo experimentos obligatorios
-    python experiments.py --extensions # solo experimentos de extensiones
+  python experiments.py             # obligatorios + ampliaciones (run completo)
+  python experiments.py --base      # solo experimentos obligatorios
+  python experiments.py --extensions  # solo ampliaciones (+2 puntos)
+  python experiments.py --sanity    # verificación rápida del pipeline (8 epochs)
 """
 
 import os
 import time
 import math
 import argparse
-import json
 
 import numpy as np
 import pandas as pd
 
-from config import (
+from config_exp import (
     RESULTS_DIR, PLOTS_DIR, RENDERS_DIR, SVG_ANALYSIS_DIR, QTABLES_DIR, BASE,
     TRAIN_SEEDS, UNSEEN_SEEDS, EPSILON_GRID, GAMMA_GRID,
     DENSITY_LOW, DENSITY_MID, SIZES, DEFAULT_EPOCHS, SANITY_EPOCHS,
     SOLUTION_CONCEPTS,
 )
-from plots import plot_curve, plot_heatmap, plot_bars, plot_grouped_bars, save_json
-from svg import analyze_svgs
+from viz import plot_curve, plot_heatmap, plot_bars, plot_grouped_bars, save_json
+from svg_analysis import analyze_svgs
 
 # --- Codebase de los profesores ---------------------------------------------
 from game_model import GameModel
@@ -395,29 +394,6 @@ def save_qtables(algorithms, run_name):
     for i, algo in enumerate(algorithms):
         path = os.path.join(QTABLES_DIR, f"{run_name}_agent{i}.npy")
         np.save(path, algo.q_table)
-
-
-def load_reference_hyperparams(epochs):
-    """Recupera los hiperparámetros óptimos de EXP1 para el flujo de extensiones.
-
-    Si ya existe el resumen de EXP1, se reutiliza. Si no, se recalcula solo el
-    sweep de hiperparámetros para obtener el par de referencia.
-    """
-    summary_path = os.path.join(RESULTS_DIR, "exp1_summary.json")
-    if os.path.exists(summary_path):
-        try:
-            with open(summary_path, "r", encoding="utf-8") as handle:
-                summary = json.load(handle)
-            best_eps = summary["best_epsilon"]
-            best_gamma = summary["best_gamma"]
-            log(f"Reutilizando hiperparámetros de {summary_path}: "
-                f"epsilon_max={best_eps}, gamma={best_gamma}", 1)
-            return best_eps, best_gamma
-        except (OSError, KeyError, TypeError, ValueError) as exc:
-            log(f"[aviso] no se pudo leer {summary_path}: {exc}", 1)
-
-    log("No hay resumen previo de EXP1; se recalcula solo el sweep de hiperparámetros.", 1)
-    return experiment_1_hyperparams(epochs)
 # ============================================================================
 #  EXPERIMENTO 1 -- Estudio conjunto de (epsilon, gamma)
 # ============================================================================
@@ -1045,17 +1021,14 @@ def run_obligatory(epochs):
 def main():
     parser = argparse.ArgumentParser(
         description="Batería de experimentos -- Práctica 3 SID")
-    mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument("--base", action="store_true",
-                            help="Ejecutar solo los experimentos obligatorios")
-    mode_group.add_argument("--extensions", action="store_true",
-                            help="Ejecutar solo los experimentos de extensiones (+2 puntos)")
     parser.add_argument("--sanity", action="store_true",
                         help="Verificación rápida del pipeline (pocos epochs)")
     parser.add_argument("--epochs", type=int, default=None,
                         help="Número de epochs (sobreescribe el valor por defecto)")
-    parser.add_argument("--only-extensions", action="store_true",
-                        help=argparse.SUPPRESS)
+    parser.add_argument("--base", action="store_true",
+                        help="Ejecutar SOLO los experimentos obligatorios")
+    parser.add_argument("--extensions", action="store_true",
+                        help="Ejecutar SOLO las ampliaciones (+2 puntos)")
     args = parser.parse_args()
 
     if args.epochs is not None:
@@ -1065,20 +1038,10 @@ def main():
     else:
         epochs = DEFAULT_EPOCHS
 
-    if args.base and args.only_extensions:
-        parser.error("--base y --only-extensions son incompatibles")
-
     make_dirs(ALL_DIRS)
 
     banner("BATERÍA DE EXPERIMENTOS -- Práctica 3 SID")
-    if args.sanity:
-        mode = "SANITY (verificación del pipeline)"
-    elif args.base:
-        mode = "BASE (solo experimentos obligatorios)"
-    elif args.extensions or args.only_extensions:
-        mode = "EXTENSIONS (solo experimentos de extensiones)"
-    else:
-        mode = "COMPLETO (obligatorios + extensiones)"
+    mode = "SANITY (verificación del pipeline)" if args.sanity else "COMPLETO"
     log(f"Modo: {mode} | epochs={epochs}")
     log(f"Seeds de entrenamiento: {TRAIN_SEEDS}")
     log(f"Densidades: baja={DENSITY_LOW}, media={DENSITY_MID}")
@@ -1087,14 +1050,19 @@ def main():
 
     t_start = time.time()
 
-    if args.base:
-        best_eps, best_gamma = run_obligatory(epochs)
-    elif args.extensions or args.only_extensions:
-        best_eps, best_gamma = load_reference_hyperparams(epochs)
+    # Esquema de flags:
+    #   (sin flag)    -> obligatorios + ampliaciones
+    #   --base        -> solo obligatorios
+    #   --extensions  -> solo ampliaciones (fija hiperparám. con EXP1 primero)
+    if args.extensions and not args.base:
+        # Solo ampliaciones: necesitan (eps*, gamma*), que sale del EXP1.
+        best_eps, best_gamma = experiment_1_hyperparams(epochs)
         run_all_extensions(best_eps, best_gamma, epochs)
     else:
         best_eps, best_gamma = run_obligatory(epochs)
-        run_all_extensions(best_eps, best_gamma, epochs)
+        if not args.base:
+            # Sin --base, tras los obligatorios corremos también las ampliaciones.
+            run_all_extensions(best_eps, best_gamma, epochs)
 
     elapsed = time.time() - t_start
     banner("BATERÍA COMPLETADA")
