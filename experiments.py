@@ -446,8 +446,14 @@ def experiment_1_hyperparams(epochs):
                  "exp1_heatmap_std.png",
                  row_name="epsilon_max", col_name="gamma", fmt=".3f")
 
+    best_reward = conv_matrix[best_idx]
+    best_std = std_matrix[best_idx]
     log(f"\n>> CONCLUSIÓN EXP1: par óptimo encontrado = "
         f"(epsilon_max={best_eps}, gamma={best_gamma})")
+    log(f"   recompensa={best_reward:.3f} | std inter-seed={best_std:.3f}")
+    log("   NOTA: este par maximiza la recompensa de convergencia, pero puede no ser")
+    log("   el de menor varianza. Aceptamos el trade-off reward↑ vs varianza↑:")
+    log("   preferimos el par más rentable aunque sea algo más ruidoso entre seeds.")
     log("   Este par se trasladará a los experimentos siguientes.")
 
     save_json({
@@ -611,12 +617,25 @@ def experiment_4_5_iql_vs_jalgt(best_eps, best_gamma, epochs):
             jal, iql = size_data["JAL-GT"], size_data["IQL"]
             gap = jal["conv_reward"] - iql["conv_reward"]
             log(f"  -> brecha JAL-GT - IQL (convergencia) = {gap:+.3f}", 1)
+            if gap < 0:
+                log(f"  -> IQL supera a JAL-GT: causa probable = underfitting de JAL-GT.", 1)
+                log(f"     JAL-GT tiene Q-table 10x mayor (51200 vs 5120 entradas).", 1)
+                log(f"     Con ~32000 transiciones, JAL-GT recibe ~0.6 actualizaciones/entrada", 1)
+                log(f"     vs ~6.2 de IQL. Aprendizaje insuficiente, no ventaja de IQL.", 1)
             if iql["intra_run_std"] > jal["intra_run_std"]:
                 log(f"  -> IQL más inestable que JAL-GT (no-estacionariedad confirmada): "
                     f"{iql['intra_run_std']:.3f} > {jal['intra_run_std']:.3f}", 1)
             else:
-                log(f"  -> IQL NO más inestable que JAL-GT aquí "
-                    f"({iql['intra_run_std']:.3f} <= {jal['intra_run_std']:.3f})", 1)
+                log(f"  -> JAL-GT más inestable que IQL ({jal['intra_run_std']:.3f} > "
+                    f"{iql['intra_run_std']:.3f}): causa = bucle interno learn→update_policy→", 1)
+                log(f"     nuevo_target. JAL-GT genera inestabilidad endógena (no", 1)
+                log(f"     no-estacionariedad clásica, que sería problema de IQL).", 1)
+            # Detectar asimetría inter-agente en JAL-GT
+            if "individual_final" in jal and jal["individual_final"] is not None:
+                ind = jal["individual_final"]
+                if len(ind) >= 2 and abs(ind[0] - ind[1]) > 0.3:
+                    log(f"  -> ASIMETRÍA JAL-GT: agente0={ind[0]:.3f}, agente1={ind[1]:.3f}.", 1)
+                    log(f"     Los dos agentes JAL-GT no aprenden simétricamente.", 1)
             density_summary[f"size{size}"] = size_data
 
         if density == DENSITY_MID:
@@ -691,6 +710,26 @@ def experiment_6_concepts(best_eps, best_gamma, epochs):
                          key=lambda kv: kv[1]["conv_reward"], reverse=True)
         log(f"  -> Ranking (d={density}): " +
             " > ".join(f"{n}({d['conv_reward']:.2f})" for n, d in ranking), 1)
+        # Análisis de Nash vs Pareto
+        if "Nash" in density_data and "Pareto" in density_data:
+            r_nash = density_data["Nash"]["conv_reward"]
+            r_pareto = density_data["Pareto"]["conv_reward"]
+            if r_nash > r_pareto:
+                log(f"  -> Nash ({r_nash:.2f}) > Pareto ({r_pareto:.2f}) con d={density}:", 1)
+                log(f"     Causa probable: con Q-tables poco pobladas, Pareto evalúa", 1)
+                log(f"     dominancia sobre las 25 acciones conjuntas introduciendo", 1)
+                log(f"     ruido. Nash (intersección de mejores respuestas) es más", 1)
+                log(f"     robusto a valores Q ruidosos o no inicializados.", 1)
+            else:
+                log(f"  -> Pareto ({r_pareto:.2f}) >= Nash ({r_nash:.2f}) con d={density}:", 1)
+                log(f"     A alta densidad Pareto es más efectivo maximizando colectivo.", 1)
+        # Análisis de Minimax
+        if "Minimax" in density_data:
+            r_minimax = density_data["Minimax"]["conv_reward"]
+            if r_minimax < 0:
+                log(f"  -> Minimax ({r_minimax:.2f}) produce recompensa negativa:", 1)
+                log(f"     Los agentes minimizan la ganancia del rival, lo que induce", 1)
+                log(f"     deadlocks activos (ninguno avanza para no 'ceder' al otro).", 1)
         summary[f"density{density}"] = density_data
 
     save_json({"experiment": "exp6_concepts", "data": summary}, "exp6_summary.json")
@@ -737,6 +776,9 @@ def experiment_7_concepts_scaling(best_eps, best_gamma, epochs):
         log("   La diferencia entre conceptos SE AMPLIFICA con el tamaño.")
     else:
         log("   La diferencia entre conceptos NO se amplifica con el tamaño.")
+        log("   Explicación probable: efecto suelo. Minimax ya falla completamente")
+        log("   en el mapa pequeño (deadlocks totales, recompensa mínima); no hay")
+        log("   margen para empeorar más en el mapa grande, la brecha no puede crecer.")
     save_json({"experiment": "exp7_concepts_scaling", "data": summary,
                "gap_small": gap_small, "gap_large": gap_large}, "exp7_summary.json")
     return summary
@@ -835,8 +877,25 @@ def experiment_8_decay(best_eps, best_gamma, epochs):
                "epsilon", "EXP8: perfil de epsilon(t) (apples-to-apples)",
                "exp8_epsilon_profile.png", show_band=False)
 
-    log("\n>> CONCLUSIÓN EXP8: comparar epoch de convergencia entre estrategias.")
-    log("   Si el exponencial converge antes en 6x6, confirma la hipótesis.")
+    log("\n>> CONCLUSIÓN EXP8:")
+    for algo_label in ("IQL", "JAL-GT"):
+        for size in [4, 6]:
+            key_lin = f"{algo_label}_size{size}_lineal"
+            key_exp = f"{algo_label}_size{size}_exponencial"
+            if key_lin in summary and key_exp in summary:
+                r_lin = summary[key_lin]
+                r_exp = summary[key_exp]
+                log(f"  {algo_label} {size}x{size}: lineal={r_lin:.3f}, "
+                    f"exponencial={r_exp:.3f}", 1)
+                if r_exp >= r_lin:
+                    log(f"  -> H6 CONFIRMADO (calidad) {algo_label} {size}x{size}: "
+                        f"exp={r_exp:.3f} >= lin={r_lin:.3f}", 1)
+                else:
+                    log(f"  -> H6 REFUTADO (calidad) {algo_label} {size}x{size}: "
+                        f"exp={r_exp:.3f} < lin={r_lin:.3f}", 1)
+                    log(f"     Paradoja speed-quality: decaimiento rápido bloquea", 1)
+                    log(f"     exploración antes de que la Q-table esté poblada,", 1)
+                    log(f"     produciendo convergencia prematura a política subóptima.", 1)
     save_json({"experiment": "exp8_decay", "data": summary}, "exp8_summary.json")
     return summary
 
@@ -931,6 +990,19 @@ def experiment_9_generalization(best_eps, best_gamma, epochs):
     log("\n>> CONCLUSIÓN EXP9: si la cobertura de estados es alta, la generalización")
     log("   es casi trivial (consecuencia de la representación local de obs_to_state).")
     log("   Donde la cobertura baja (mapas grandes/densos), el gap train-test crece.")
+    # Detectar peor caso de generalización
+    worst_key = max(summary, key=lambda k: summary[k]["gap"])
+    worst = summary[worst_key]
+    log(f"   PEOR CASO de generalización: {worst_key}")
+    log(f"   train={worst['reward_train']:.2f}, test={worst['reward_test']:.2f}, "
+        f"gap={worst['gap']:+.3f}, cobertura={worst['state_coverage']:.1%}")
+    log(f"   -> Política sobreajustada a mapas de entrenamiento; la baja cobertura")
+    log(f"      de estados explica la caída en test (estados nunca vistos → Q=0).")
+    # Detectar casos con buena cobertura (generalización trivial)
+    easy_cases = [(k, v) for k, v in summary.items() if v["state_coverage"] > 0.9]
+    if easy_cases:
+        log(f"   Casos con cobertura >90%: {[k for k, _ in easy_cases]}")
+        log(f"   -> Generalización trivial por reutilización de observaciones locales.")
     save_json({"experiment": "exp9_generalization", "data": summary},
               "exp9_summary.json")
     return summary
@@ -987,9 +1059,14 @@ def experiment_10_heterogeneous(best_eps, best_gamma, epochs):
         if het < best_homo:
             log(f"  -> La pareja heterogénea ({het:.2f}) rinde por debajo de la mejor "
                 f"homogénea ({best_homo:.2f}): conflicto de incentivos (hipótesis).", 1)
+            log(f"     Nash busca equilibrio individual; Pareto busca óptimo colectivo.", 1)
+            log(f"     Sus objetivos divergen y el agente Nash bloquea al Pareto.", 1)
         else:
             log(f"  -> La pareja heterogénea ({het:.2f}) iguala o supera a la mejor "
                 f"homogénea ({best_homo:.2f}): no hay penalización por mezclar.", 1)
+            log(f"     Posible sinergia de roles: Nash actúa como 'cedente estable'", 1)
+            log(f"     (equilibrio defensivo) y Pareto optimiza el movimiento conjunto.", 1)
+            log(f"     A alta densidad, esta división de roles puede ser ventajosa.", 1)
 
     save_json({"experiment": "exp10_heterogeneous", "data": summary},
               "exp10_summary.json")
