@@ -27,11 +27,13 @@ Ampliaciones (+2 puntos), lanzadas con --extensions:
   EXP 10 Parejas heterogéneas de conceptos de solución   (+0.5)
 
 Uso:
-  python experiments.py             # obligatorios + ampliaciones (run completo)
-  python experiments.py --base      # solo experimentos obligatorios
-  python experiments.py --complete  # añade EXP2 y EXP3 al run (validación hiperparámetros)
-  python experiments.py --extensions  # solo ampliaciones (+2 puntos)
-  python experiments.py --sanity    # verificación rápida del pipeline (8 epochs)
+  python experiments.py                                    # todos los experimentos
+  python experiments.py --base                             # solo obligatorios (incluye EXP2/3)
+  python experiments.py --extensions                       # solo ampliaciones
+
+  python experiments.py --epochs 50
+  python experiments.py --base --epochs 50 --episodes 5 --seeds 2
+  python experiments.py --extensions --epochs 100 --seeds 5
 """
 
 import os
@@ -45,10 +47,8 @@ import pandas as pd
 from config import (
     RESULTS_DIR, PLOTS_DIR, RENDERS_DIR, SVG_ANALYSIS_DIR, QTABLES_DIR, BASE,
     TRAIN_SEEDS, UNSEEN_SEEDS, EPSILON_GRID, GAMMA_GRID,
-    DENSITY_LOW, DENSITY_MID, SIZES, DEFAULT_EPOCHS, SANITY_EPOCHS,
+    DENSITY_LOW, DENSITY_MID, SIZES, DEFAULT_EPOCHS,
     SOLUTION_CONCEPTS,
-    EXP1_SEEDS, EXP2_SEEDS, EXP3_SEEDS, EXP45_SEEDS, EXP6_SEEDS,
-    EXP7_SEEDS, EXP8_SEEDS, EXP9_SEEDS, EXP10_SEEDS,
 )
 from plots import plot_curve, plot_heatmap, plot_bars, plot_grouped_bars, save_json
 from svg import analyze_svgs
@@ -72,6 +72,9 @@ except ModuleNotFoundError:
     from pogema.svg_animation.animation_wrapper import AnimationMonitor, AnimationConfig
 
 ALL_DIRS = (RESULTS_DIR, PLOTS_DIR, RENDERS_DIR, SVG_ANALYSIS_DIR, QTABLES_DIR)
+
+# Seeds activas para todos los experimentos; main() lo sobreescribe con --seeds.
+_run_seeds = list(TRAIN_SEEDS)
 
 
 # ============================================================================
@@ -404,7 +407,7 @@ def save_qtables(algorithms, run_name):
 def experiment_1_hyperparams(epochs):
     banner("EXPERIMENTO 1 -- Estudio conjunto de (epsilon, gamma)")
     log("Objetivo: caracterizar el efecto de epsilon y gamma y fijar el par óptimo")
-    log(f"Algoritmo: JAL-GT (Pareto) | Mapa: 4x4 | Densidad: 0.1 | Seeds: {EXP1_SEEDS}")
+    log(f"Algoritmo: JAL-GT (Pareto) | Mapa: 4x4 | Densidad: 0.1 | Seeds: {_run_seeds}")
     log("Hipótesis:")
     log("- epsilon alto reduce la varianza inter-seed (mejor cobertura inicial).", 1)
     log("- gamma alto es necesario para propagar la recompensa terminal (objetivo", 1)
@@ -425,7 +428,7 @@ def experiment_1_hyperparams(epochs):
                                algorithm_cls=JALGT,
                                solution_concept_cls=ParetoSolutionConcept,
                                renders_dir=RENDERS_DIR)
-            res = run_training(cfg, EXP1_SEEDS, run_name)
+            res = run_training(cfg, _run_seeds, run_name)
             conv_matrix[i, j] = res["conv_reward_mean"]
             std_matrix[i, j] = res["inter_seed_std_final"]
             all_runs.append(res)
@@ -503,7 +506,7 @@ def experiment_2_iql_transfer(best_eps, best_gamma, epochs):
                            epsilon_max=best_eps, gamma=gamma,
                            algorithm_cls=IQL, solution_concept_cls=None,
                            renders_dir=RENDERS_DIR)
-        res = run_training(cfg, EXP2_SEEDS, run_name)
+        res = run_training(cfg, _run_seeds, run_name)
         results[gamma] = res["conv_reward_mean"]
         log(f"   recompensa en convergencia = {res['conv_reward_mean']:.3f}", 1)
 
@@ -549,7 +552,7 @@ def experiment_3_validate_large(best_eps, best_gamma, epochs):
                            epsilon_max=eps, gamma=gamma, algorithm_cls=JALGT,
                            solution_concept_cls=ParetoSolutionConcept,
                            renders_dir=RENDERS_DIR)
-        res = run_training(cfg, EXP3_SEEDS, run_name)
+        res = run_training(cfg, _run_seeds, run_name)
         results[label] = res["conv_reward_mean"]
         runs.append({"label": f"{label} (eps={eps},g={gamma})",
                      "mean": res["mean_collective"], "std": res["std_collective"]})
@@ -602,7 +605,7 @@ def experiment_4_5_iql_vs_jalgt(best_eps, best_gamma, epochs):
                                    epsilon_max=best_eps, gamma=best_gamma,
                                    algorithm_cls=algo_cls, solution_concept_cls=concept,
                                    renders_dir=RENDERS_DIR)
-                res = run_training(cfg, EXP45_SEEDS, run_name, save_svgs=save_svgs,
+                res = run_training(cfg, _run_seeds, run_name, save_svgs=save_svgs,
                                    svg_concept_name=f"{exp_id}_{algo_label}")
                 runs_for_plot.append({"label": algo_label,
                                       "mean": res["mean_collective"],
@@ -692,7 +695,7 @@ def experiment_6_concepts(best_eps, best_gamma, epochs):
                                epsilon_max=best_eps, gamma=best_gamma,
                                algorithm_cls=JALGT, solution_concept_cls=concept_cls,
                                renders_dir=RENDERS_DIR)
-            res = run_training(cfg, EXP6_SEEDS, run_name, save_svgs=save_svgs,
+            res = run_training(cfg, _run_seeds, run_name, save_svgs=save_svgs,
                                svg_concept_name=f"exp6_{concept_name}")
             runs_for_plot.append({"label": concept_name,
                                   "mean": res["mean_collective"],
@@ -773,7 +776,7 @@ def experiment_7_concepts_scaling(best_eps, best_gamma, epochs):
                                algorithm_cls=JALGT,
                                solution_concept_cls=SOLUTION_CONCEPTS[concept_name],
                                renders_dir=RENDERS_DIR)
-            res = run_training(cfg, EXP7_SEEDS, run_name)
+            res = run_training(cfg, _run_seeds, run_name)
             bar_labels.append(concept_name)
             bar_values.append(res["conv_reward_mean"])
             summary[f"{concept_name}_size{size}"] = res["conv_reward_mean"]
@@ -866,7 +869,7 @@ def experiment_8_decay(best_eps, best_gamma, epochs):
                                    algorithm_cls=algo_cls,
                                    solution_concept_cls=concept,
                                    renders_dir=RENDERS_DIR)
-                res = _run_with_decay(cfg, EXP8_SEEDS, run_name, decay_fn)
+                res = _run_with_decay(cfg, _run_seeds, run_name, decay_fn)
                 runs_for_plot.append({"label": f"{decay_label}",
                                       "mean": res["mean_collective"],
                                       "std": res["std_collective"]})
@@ -994,8 +997,8 @@ def experiment_9_generalization(best_eps, best_gamma, epochs):
                                    renders_dir=RENDERS_DIR)
                 # Entrenamos con 3 seeds para reducir el sesgo de una seed concreta.
                 # La generalización mide contraste train/test, no varianza inter-seed;
-                # final_algorithms corresponde al último seed de EXP9_SEEDS.
-                res = run_training(cfg, EXP9_SEEDS, run_name)
+                # final_algorithms corresponde al último seed de _run_seeds.
+                res = run_training(cfg, _run_seeds, run_name)
                 algorithms = res["final_algorithms"]
                 game = GameModel(num_agents=cfg["num_agents"],
                                  num_states=cfg["num_states"], num_actions=5)
@@ -1080,7 +1083,7 @@ def experiment_10_heterogeneous(best_eps, best_gamma, epochs):
                                solution_concept_cls=concepts[0],  # fallback
                                renders_dir=RENDERS_DIR,
                                per_agent_concepts=concepts)
-            res = run_training(cfg, EXP10_SEEDS, run_name)
+            res = run_training(cfg, _run_seeds, run_name)
             summary[f"{pair_name}_d{density}"] = res["conv_reward_mean"]
             bar_labels.append(pair_name)
             bar_values.append(res["conv_reward_mean"])
@@ -1125,17 +1128,11 @@ def run_all_extensions(best_eps, best_gamma, epochs):
 #  ORQUESTADOR PRINCIPAL
 # ============================================================================
 
-def run_obligatory(epochs, complete=False):
-    """Lanza la batería obligatoria y devuelve los hiperparámetros óptimos.
-
-    Con complete=False (por defecto) se omiten EXP2 y EXP3, asumiendo
-    transferencia correcta de hiperparámetros. Con complete=True se incluyen
-    para validar explícitamente la transferencia (flag --complete).
-    """
+def run_obligatory(epochs):
+    """Lanza la batería obligatoria completa y devuelve los hiperparámetros óptimos."""
     best_eps, best_gamma = experiment_1_hyperparams(epochs)
-    if complete:
-        experiment_2_iql_transfer(best_eps, best_gamma, epochs)
-        experiment_3_validate_large(best_eps, best_gamma, epochs)
+    experiment_2_iql_transfer(best_eps, best_gamma, epochs)
+    experiment_3_validate_large(best_eps, best_gamma, epochs)
     experiment_4_5_iql_vs_jalgt(best_eps, best_gamma, epochs)
     experiment_6_concepts(best_eps, best_gamma, epochs)
     experiment_7_concepts_scaling(best_eps, best_gamma, epochs)
@@ -1143,53 +1140,62 @@ def run_obligatory(epochs, complete=False):
 
 
 def main():
+    global _run_seeds
+
     parser = argparse.ArgumentParser(
         description="Batería de experimentos -- Práctica 3 SID")
-    parser.add_argument("--sanity", action="store_true",
-                        help="Verificación rápida del pipeline (pocos epochs)")
-    parser.add_argument("--epochs", type=int, default=None,
-                        help="Número de epochs (sobreescribe el valor por defecto)")
-    parser.add_argument("--base", action="store_true",
-                        help="Ejecutar SOLO los experimentos obligatorios")
-    parser.add_argument("--extensions", action="store_true",
-                        help="Ejecutar SOLO las ampliaciones (+2 puntos)")
-    parser.add_argument("--complete", action="store_true",
-                        help="Incluir EXP2 y EXP3 (validación transferencia hiperparámetros)")
+
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument("--base", action="store_true",
+                            help="Ejecutar solo los experimentos obligatorios")
+    mode_group.add_argument("--extensions", action="store_true",
+                            help="Ejecutar solo las ampliaciones (+2 puntos)")
+
+    parser.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS,
+                        help=f"Epochs de entrenamiento (default: {DEFAULT_EPOCHS})")
+    parser.add_argument("--episodes", type=int, default=None,
+                        help="Episodios por epoch (default: valor de config)")
+    parser.add_argument("--seeds", type=int, default=None,
+                        help="Número de seeds (default: todas las de TRAIN_SEEDS)")
     args = parser.parse_args()
 
-    if args.epochs is not None:
-        epochs = args.epochs
-    elif args.sanity:
-        epochs = SANITY_EPOCHS
-    else:
-        epochs = DEFAULT_EPOCHS
+    # Aplicar overrides de configuración antes de lanzar cualquier experimento
+    if args.seeds is not None:
+        _run_seeds = list(range(args.seeds))
+    if args.episodes is not None:
+        BASE["episodes_per_epoch"] = args.episodes
+
+    epochs = args.epochs
 
     make_dirs(ALL_DIRS)
 
+    if args.extensions:
+        mode_label = "AMPLIACIONES"
+    elif args.base:
+        mode_label = "OBLIGATORIOS"
+    else:
+        mode_label = "TODOS (obligatorios + ampliaciones)"
+
     banner("BATERÍA DE EXPERIMENTOS -- Práctica 3 SID")
-    mode = "SANITY (verificación del pipeline)" if args.sanity else "COMPLETO"
-    log(f"Modo: {mode} | epochs={epochs}")
-    log(f"Seeds por experimento: EXP1={EXP1_SEEDS}, EXP4/5={EXP45_SEEDS}, "
-        f"EXP6={EXP6_SEEDS}, EXP8={EXP8_SEEDS}")
-    log(f"Densidades: baja={DENSITY_LOW}, media={DENSITY_MID}")
-    log(f"Grid hiperparámetros: epsilon in {EPSILON_GRID}, gamma in {GAMMA_GRID}")
-    log("Las conclusiones se trasladan automáticamente entre experimentos.")
+    log(f"Modo:              {mode_label}")
+    log(f"Epochs:            {epochs}")
+    log(f"Episodios/epoch:   {BASE['episodes_per_epoch']}")
+    log(f"Seeds:             {_run_seeds}  (n={len(_run_seeds)})")
+    log(f"Densidades:        baja={DENSITY_LOW}, media={DENSITY_MID}")
+    log(f"Grid hiperparams:  epsilon in {EPSILON_GRID}, gamma in {GAMMA_GRID}")
 
     t_start = time.time()
 
     # Esquema de flags:
-    #   (sin flag)       -> obligatorios (sin EXP2/3) + ampliaciones
-    #   --base           -> solo obligatorios (sin EXP2/3)
-    #   --complete       -> obligatorios (con EXP2/3) + ampliaciones
-    #   --extensions     -> solo ampliaciones (fija hiperparám. con EXP1 primero)
-    if args.extensions and not args.base:
-        # Solo ampliaciones: necesitan (eps*, gamma*), que sale del EXP1.
+    #   (sin flag)    -> obligatorios (EXP1-7, incluye EXP2/3) + ampliaciones (EXP8-10)
+    #   --base        -> solo obligatorios (EXP1-7, incluye EXP2/3)
+    #   --extensions  -> solo ampliaciones; EXP1 primero para obtener (eps*, gamma*)
+    if args.extensions:
         best_eps, best_gamma = experiment_1_hyperparams(epochs)
         run_all_extensions(best_eps, best_gamma, epochs)
     else:
-        best_eps, best_gamma = run_obligatory(epochs, complete=args.complete)
+        best_eps, best_gamma = run_obligatory(epochs)
         if not args.base:
-            # Sin --base, tras los obligatorios corremos también las ampliaciones.
             run_all_extensions(best_eps, best_gamma, epochs)
 
     elapsed = time.time() - t_start
