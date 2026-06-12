@@ -1,0 +1,447 @@
+INFORME DE ANÁLISIS — Práctica 3 SID (MARL)
+
+  IQL vs JAL-GT sobre POGEMA
+
+  Basado en la revisión completa del código, resultados, terminal y análisis SVG
+
+  ---
+  A. COHERENCIA DE LOS RESULTADOS
+
+  A.1 EXP1 — Grid de hiperparámetros anomalía en el par óptimo
+
+  El ganador eps=0.5, gamma=0.9 (12.471) es coherente pero sorprendente. Ambas hipótesis formuladas (epsilon alto →
+  menos varianza; gamma alto → mejor propagación de recompensa) son refutadas por los propios datos
+
+  - Epsilon el mejor epsilon es 0.5 (el más bajo del grid), no 1.0. Esto es explicable en un mapa 4×4 con
+  episode_length=16, el espacio de estados se cubre rápido. Con eps=1.0, el período de explotación es tan corto que
+  el agente no converge bien antes del final del entrenamiento. Eps=0.5 da más explotación útil durante más epochs.
+  - Gamma gamma=0.9 gana para eps=0.5, aunque en Práctica 2 (FrozenLake) gamma=0.99 fue claramente mejor. En POGEMA
+  4×4, el objetivo está a ≤3 pasos en la mayoría de episodios (0.9³ = 0.729, señal suficiente). El step penalty de
+  −0.01 es muy pequeño comparado con +1.0, por lo que la propagación de crédito no es tan crítica como en FrozenLake.
+
+  Inconsistencia real el par eps=0.5, gamma=0.9 tiene la varianza inter-seed más alta del grid entero (2.008),
+  exactamente lo contrario de lo que se esperaba de eps bajo. Elegir el ganador por recompensa de convergencia
+  ignorando la varianza es una decisión técnicamente válida pero que debería documentarse explícitamente como
+  elección deliberada.
+
+  La matriz tampoco es monótona en ninguna dirección, lo que indica que gamma y epsilon están acoplados de forma no
+  lineal, lo cual justifica retrospectivamente el diseño de grid conjunto.
+
+  A.2 EXP2 — Transferencia de gamma a IQL coherente y reveladora
+
+  El gamma óptimo de IQL es también 0.9 (13.190 vs 12.856 para 0.95 vs 12.123 para 0.99). Coincidencia perfecta con
+  JAL-GT, lo que da fairness total a la comparativa. Además, ya en este experimento se observa que IQL supera a
+  JAL-GT (13.190 vs 12.471 en el mismo escenario 4×4). Este es el primer indicio de que H1 se va a violar — el hecho
+  de que el informe no lo señale aquí es una oportunidad perdida.
+
+  A.3 EXP3 — Transferencia al mapa 10×10 coherente
+
+  El par óptimo supera al baseline en 10×10 (9.898 vs 9.543, +3.7%). La mejora es modesta pero consistente. La
+  conclusión del código es correcta.
+
+  A.4 EXP45 — IQL vs JAL-GT el hallazgo central que invierte las hipótesis
+
+  Este es el resultado más llamativo y más importante de toda la práctica
+
+  EXP4 (density=0.1)
+
+  ┌────────┬───────────┬──────────────┬──────────────────────┬──────────────┬─────────────────┐
+  │ Tamaño │ IQL conv. │ JAL-GT conv. │ Brecha (JAL-GT−IQL)  │ Inestab. IQL │ Inestab. JAL-GT │
+  ├────────┼───────────┼──────────────┼──────────────────────┼──────────────┼─────────────────┤
+  │ 4×4    │ 13.190    │ 12.471       │ −0.719 (IQL gana)    │ 0.039        │ 0.482           │
+  ├────────┼───────────┼──────────────┼──────────────────────┼──────────────┼─────────────────┤
+  │ 6×6    │ 11.985    │ 9.011        │ −2.974 (IQL gana)    │ 0.038        │ 0.471           │
+  ├────────┼───────────┼──────────────┼──────────────────────┼──────────────┼─────────────────┤
+  │ 10×10  │ 9.144     │ 9.898        │ +0.754 (JAL-GT gana) │ 0.064        │ 0.535           │
+  └────────┴───────────┴──────────────┴──────────────────────┴──────────────┴─────────────────┘
+
+  EXP5 (density=0.25)
+
+  ┌────────┬───────────┬──────────────┬────────┬──────────────┬─────────────────┐
+  │ Tamaño │ IQL conv. │ JAL-GT conv. │ Brecha │ Inestab. IQL │ Inestab. JAL-GT │
+  ├────────┼───────────┼──────────────┼────────┼──────────────┼─────────────────┤
+  │ 4×4    │ 14.306    │ 13.855       │ −0.451 │ 0.027        │ 0.426           │
+  ├────────┼───────────┼──────────────┼────────┼──────────────┼─────────────────┤
+  │ 6×6    │ 6.577     │ 4.491        │ −2.086 │ 0.177        │ 0.579           │
+  ├────────┼───────────┼──────────────┼────────┼──────────────┼─────────────────┤
+  │ 10×10  │ 4.345     │ 1.966        │ −2.378 │ 0.624        │ 0.597           │
+  └────────┴───────────┴──────────────┴────────┴──────────────┴─────────────────┘
+
+  Los resultados son plenamente coherentes con la mecánica interna de los algoritmos, aunque violan las hipótesis de
+  partida. Las explicaciones son
+
+  1. ¿Por qué IQL  JAL-GT en la mayoría de casos JAL-GT mantiene una Q-table conjunta de dimensión [2 × 1024 × 25]
+  = 51,200 entradas, frente a [1024 × 5] = 5,120 por agente de IQL. Con alpha=0.01 y 200 epochs × 10 mapas × 10
+  seeds, JAL-GT necesita ~5× más visitas por estado-acción para llenar su tabla con la misma calidad. IQL simplemente
+  aprende más rápido porque su espacio es más pequeño. La ventaja de modelar coordinación no compensa el coste de
+  aprender en un espacio 5× mayor con el mismo presupuesto de muestras.
+  2. ¿Por qué JAL-GT gana solo en 10×10 d=0.1 En mapas grandes con poca densidad, los agentes se cruzan con más
+  frecuencia en trayectorias largas. Aquí sí hay valor real en modelar las acciones conjuntas. Además, en 10×10 el
+  espacio de estados está más repartido y las Q-tables de IQL tienen peor cobertura relativa.
+  3. ¿Por qué JAL-GT es MÁS inestable que IQL Esta inversión de H2 tiene una explicación mecánica JAL-GT actualiza
+  su joint_policy en cada step (update_policy se llama dentro de learn). Esto significa que el concepto de solución
+  (Pareto) se recomputa constantemente, creando un bucle la Q-table cambia → la política cambia → los targets
+  cambian → la Q-table cambia de nuevo. Es una no-estacionariedad generada por el propio algoritmo, no por el otro
+  agente. IQL paradójicamente es más estable porque sus Q-values convergen más rápido a sus valores correctos
+  (espacio pequeño, target más estable).
+  4. Asimetría individual en EXP5 10×10 IQL [3.891, 0.519], JAL-GT [2.689, −0.476]. El agente1 de JAL-GT tiene
+  recompensa negativa consistentemente — nunca llega a su objetivo y solo acumula step penalties. Esto es
+  preocupante en mapas grandes y densos, JAL-GT puede sacrificar a un agente para coordinar el otro, con resultado
+  peor que si cada uno actuara independientemente.
+
+  A.5 EXP6 — Conceptos de solución rankings inesperados pero coherentes
+
+  Los rankings observados son
+  - d=0.1 Nash(11.63)  Pareto(9.01)  Welfare(6.64)  Minimax(−2.45)
+  - d=0.25 Pareto(4.49) ≈ Nash(4.31)  Welfare(1.88)  Minimax(−2.41)
+
+  Inconsistencia con H3 La hipótesis predecía ParetoWelfare  Nash  Minimax. Los datos muestran Nash  Pareto
+  (d=0.1) y Welfare peor que Nash en ambas densidades.
+
+  Estas diferencias son coherentes con los mecanismos
+  - Nash superior a Pareto en d=0.1 La búsqueda de mejor-respuesta (Nash) es más directa computacionalmente que el
+  cálculo Pareto-eficiente. Nash simplemente elige la acción que maximiza el Q-value propio dado lo que predice el
+  otro. En baja densidad, donde la interferencia es mínima, la mejor respuesta individual ES la coordinación
+  correcta. Pareto busca entre 25 acciones las que no son dominadas, pero con Q-tables que aún no están bien
+  pobladas, este cálculo introduce ruido.
+  - Welfare inferior a lo esperado Welfare maximiza la suma de Q-values. En un entorno donde los Q-values empiezan
+  en 0 y tienen alta varianza, seleccionar por suma puede escoger acciones subóptimas para cada agente individual.
+  Además, puede converger a un óptimo de bienestar colectivo que no sea óptimo para ningún agente.
+  - Minimax catastrófico Completamente coherente. Minimax penaliza las acciones del oponente usando el Q-value del
+  oponente (minimiza el máximo del rival). En un entorno cooperativo donde ambos agentes deben llegar a sus
+  objetivos, Minimax interpreta al compañero como adversario y actúa para reducir su recompensa, resultando en
+  inacción mutua. El SVG confirma esto de forma espectacular 100% deadlocks, 66.7% double deadlock.
+
+  Cambio de ranking en d=0.25 Nash y Pareto se igualan (~4.3-4.5). A mayor densidad, evitar deadlocks (donde Pareto
+  destaca 0% vs Nash 33.3%) se vuelve más importante, y Pareto sube al primer puesto.
+
+  A.6 EXP7 — Contraste Pareto vs Minimax H5 refutada por efecto suelo
+
+  La brecha Pareto−Minimax es 13.985 en 4×4 y 12.320 en 10×10. La hipótesis H5 (brecha se amplifica en 10×10) queda
+  refutada técnicamente, pero la conclusión del código es incompleta la razón es que Minimax ya está en el suelo
+  teórico en 4×4 (los agentes no se mueven). No hay nada que amplificar porque Minimax falla completamente en ambos
+  tamaños.
+
+  A.7 EXP8 — Decay exponencial vs lineal conclusión no dibujada
+
+  ┌────────────┬────────────────────┬──────────────────┬────────────────┬──────────────┐
+  │   Config   │ Conv. época lineal │ Conv. época exp. │ Recomp. lineal │ Recomp. exp. │
+  ├────────────┼────────────────────┼──────────────────┼────────────────┼──────────────┤
+  │ IQL 4×4    │ 62                 │ 106              │ 13.190         │ 13.622       │
+  ├────────────┼────────────────────┼──────────────────┼────────────────┼──────────────┤
+  │ JAL-GT 4×4 │ 131                │ 148              │ 12.471         │ 11.844       │
+  ├────────────┼────────────────────┼──────────────────┼────────────────┼──────────────┤
+  │ IQL 6×6    │ 116                │ 61               │ 11.985         │ 11.044       │
+  ├────────────┼────────────────────┼──────────────────┼────────────────┼──────────────┤
+  │ JAL-GT 6×6 │ 129                │ 125              │ 9.011          │ 8.447        │
+  └────────────┴────────────────────┴──────────────────┴────────────────┴──────────────┘
+
+  H6 parcialmente confirmada y parcialmente refutada
+  - IQL 6×6 el exponencial converge en epoch 61 vs 116 → sí converge más rápido en 6×6 (H6 confirmada)
+  - Pero la recompensa final del exponencial es 11.044 vs 11.985 → converge antes pero a una política peor (menor
+  exploración global)
+  - IQL 4×4 el exponencial da mayor recompensa (13.622 vs 13.190) pero converge MÁS TARDE (epoch 106 vs 62) —
+  inverso a lo predicho
+
+  Problema el terminal output no dibuja esta conclusión. Dice literalmente comparar epoch de convergencia entre
+  estrategias. Si el exponencial converge antes en 6x6, confirma la hipótesis. — La condición se cumple (IQL 6×6 exp
+  converge en epoch 61 vs 116) pero el código no lo declara explícitamente.
+
+  A.8 EXP9 — Generalización hipótesis demasiado optimista
+
+  La cobertura de estados varía entre 45.7% y 68.2% — no la alta cobertura que haría la generalización trivial. Los
+  gaps train−test más relevantes
+
+  ┌─────────────────────┬───────┬────────┬───────┬───────────┐
+  │       Config        │ Train │  Test  │  Gap  │ Cobertura │
+  ├─────────────────────┼───────┼────────┼───────┼───────────┤
+  │ IQL 4×4 d=0.25      │ 1.636 │ 0.044  │ 1.592 │ 52%       │
+  ├─────────────────────┼───────┼────────┼───────┼───────────┤
+  │ IQL 6×6 d=0.1       │ 1.164 │ 0.494  │ 0.670 │ 46%       │
+  ├─────────────────────┼───────┼────────┼───────┼───────────┤
+  │ JAL-GT 10×10 d=0.25 │ 0.151 │ −0.075 │ 0.226 │ 56%       │
+  ├─────────────────────┼───────┼────────┼───────┼───────────┤
+  │ IQL 10×10 d=0.1     │ 0.910 │ 0.813  │ 0.097 │ 68%       │
+  └─────────────────────┴───────┴────────┴───────┴───────────┘
+
+  La generalización NO es uniformemente buena. El peor caso (IQL 4×4 d=0.25, gap=1.592) muestra que la política
+  aprendida casi no funciona en mapas no vistos. La hipótesis de buena generalización por representación local es
+  solo parcialmente correcta funciona bien en mapas grandes (donde la cobertura es mayor) pero no en mapas pequeños
+  y densos donde cada seed genera un layout radicalmente diferente.
+
+  A.9 EXP10 — Parejas heterogéneas resultado mixto interesante
+
+  - d=0.1 Nash+Pareto (9.841)  Nash+Nash (11.627) → H8 confirmada
+  - d=0.25 Nash+Pareto (4.596)  Pareto+Pareto (4.491) y  Nash+Nash (4.307) → H8 refutada
+
+  En d=0.25 la pareja heterogénea supera a AMBAS homogéneas. Esto es un hallazgo genuinamente interesante el agente
+  Nash aporta estabilidad local y el agente Pareto aporta optimización colectiva, y la combinación resulta sinérgica
+  en entornos densos. Este resultado no se analiza en profundidad en el terminal output.
+
+  ---
+  B. CONCLUSIONES
+
+  B.1 Conclusiones principales (correctas con matices)
+
+  C1 — IQL es competitivo o superior a JAL-GT con el presupuesto de muestras usado
+  La conclusión que emerge de EXP45 es que IQL supera a JAL-GT en 5 de 6 configuraciones de tamaño×densidad. La
+  causa no es que JAL-GT sea un algoritmo peor, sino que con alpha=0.01 y 200 epochs, JAL-GT no tiene suficiente
+  tiempo de entrenamiento para llenar su espacio de 25 acciones conjuntas. La recomendación correcta para entornos
+  similares es si el presupuesto de muestras es limitado, IQL es una línea base muy difícil de superar; JAL-GT
+  necesita más tiempo o un alpha mayor para sus primeras fases de aprendizaje.
+
+  C2 — JAL-GT es más inestable que IQL, pero por razones distintas a las hipotizadas
+  La no-estacionariedad en JAL-GT no viene (principalmente) de que el otro agente cambia su política, sino del bucle
+  learn → update_policy → nuevo target. La firma de inestabilidad de IQL solo aparece claramente en EXP5 10×10 (0.624
+  vs 0.597), el único caso donde el espacio es lo suficientemente grande para que la no-estacionariedad de origen
+  externo supere la inestabilidad interna de JAL-GT.
+
+  C3 — El ranking de conceptos depende de la densidad
+  Pareto no es universalmente el mejor concepto cooperativo Nash supera a Pareto en d=0.1. La recomendación
+  contextualizada correcta es usar Nash en baja densidad (interferencia mínima, las mejores respuestas individuales
+  son compatibles), Pareto en alta densidad (evitar deadlocks se vuelve crítico). Minimax nunca debe usarse en
+  entornos cooperativos.
+
+  C4 — La hipótesis H4 queda invertida la brecha no crece a favor de JAL-GT con la densidad, sino que IQL se aleja
+  más de JAL-GT conforme aumenta la densidad y el tamaño. Esto sugiere que los obstáculos no fuerzan coordinación en
+  la medida suficiente para que JAL-GT recupere su desventaja de datos.
+
+  B.2 Conclusiones para entornos similares (correctas)
+
+  La mejor recomendación que emerge del estudio es
+  1. Usar IQL como primera línea base antes de JAL-GT — especialmente con presupuestos de muestras ajustados.
+  2. Si se usa JAL-GT, usar concepto Pareto en densidades ≥0.25 y Nash en densidades bajas.
+  3. Evitar Minimax en escenarios cooperativos (resultados catastróficos demostrados empíricamente).
+  4. El decay lineal es más robusto que el exponencial para JAL-GT; para IQL el exponencial puede ser útil cuando se
+  prioriza convergencia rápida sobre calidad final.
+  5. La representación local obs_to_state permite cierta generalización, pero no garantiza buena transferencia a
+  mapas no vistos cuando la densidad es alta (≥0.25).
+
+  ---
+  C. MAPEO A LOS CRITERIOS DE LA PRÁCTICA
+
+  Criterio 1 — Ejecución (30%)
+
+  ✅ El código arranca con python experiments.py como documenta el README.
+  ✅ El pipeline es robusto maneja las dos versiones de la API de pogema, tiene sanity check, tiene flags
+  --base--extensions--sanity.
+  ✅ Todos los outputs prometidos están generados 10 JSON, ~30 CSV, ~25 plots, 18 SVG analizados.
+  ✅ El --sanity permite verificar el pipeline sin esperar 5 horas.
+  ⚠️ El fichero se llama config.py (no config_exp.py como menciona el CONTEXTO). Inconsistencia menor de nombres.
+  ⚠️ EXP8 usa un monkeypatch de variable global (global compute_epsilon). Funciona, pero es frágil si hay imports
+  múltiples. No causa error en la ejecución real.
+
+  Criterio 2 — Implementación (20%)
+
+  ✅ IQL correctamente implementado Q-table individual [1024×5], actualización Q-Learning estándar, interfaz
+  idéntica a JALGT (mismos métodos learn, select_action, set_epsilon, explain).
+  ✅ Métricas adicionales correctas intra_run_std como ventana móvil en la segunda mitad del run, inter_seed_std,
+  convergence_epoch con P90.
+  ✅ Fix del base_seed es correcto, retrocompatible y justificado.
+  ✅ Fix del SVG global es correcto y su motivación está bien documentada.
+  ✅ EXP9 usa evaluate_on_seeds separado del entrenamiento, evitando contaminación traintest.
+  ⚠️ En IQL, joint_action se recibe pero se extrae joint_action[self.agent_id]. Correcto, pero hay que asegurarse de
+  que joint_action siempre sea indexable (lo es, porque es una tupla).
+  ⚠️ El JALGT actualiza self.metrics['td_error'] con td_target (que es r + γV' - Q), es decir TD error ANTES de
+  aplicar alpha. IQL guarda td_error (TD error también antes de aplicar alpha). Consistentes entre sí — correcto.
+
+  Criterio 3 — Diseño de experimentos (25%)
+
+  ✅ Los 7 experimentos obligatorios están presentes y encadenados correctamente.
+  ✅ Hipótesis formuladas para cada experimento (aunque algunas son incorrectas).
+  ✅ Diseño del grid conjunto 3×3 justificado por acoplamiento epsilon-gamma.
+  ✅ Selección de densidades justificada empíricamente con BFS.
+  ✅ Métrica de convergencia P90 justificada y más robusta que últimos N epochs.
+  ✅ Las 3 ampliaciones están presentes y bien diseñadas (apples-to-apples en EXP8, cobertura en EXP9, heterogéneos
+  bien interpretados en EXP10).
+  ⚠️ La selección del par óptimo en EXP1 usa solo la recompensa de convergencia, ignorando la varianza. El par
+  elegido (eps=0.5, gamma=0.9) tiene la varianza inter-seed más alta del grid (2.008). Debería haberse discutido
+  explícitamente el trade-off recompensavarianza.
+  ⚠️ En EXP9 se usa solo 1 seed para entrenar (no 10). Es una decisión justificable (se quiere ver una política
+  específica vs. mapas nuevos), pero introduce mayor ruido.
+
+  Criterio 4 — Análisis de resultados (25%)
+
+  ✅ Se usan correctamente los outputs de recompensa, TD error, tiempo de entrenamiento.
+  ✅ El análisis SVG produce hallazgos relevantes (deadlocks de Minimax, patrones de cesión).
+  ✅ Las dos métricas de estabilidad (intrainter-seed) están correctamente separadas.
+  ✅ Los resultados se contrastan con las hipótesis de partida (se detectan las violaciones).
+  ⚠️ El terminal output detecta las violaciones pero no las explica. IQL NO más inestable que JAL-GT es una
+  observación, no un análisis. Falta la explicación mecanística del por qué.
+  ⚠️ Nash  Pareto no se analiza. El ranking se imprime pero no se contextualiza con los incentivos de coordinación
+  de cada concepto.
+  ⚠️ EXP8 no tiene conclusión explícita. El código dice si confirma, confirma la hipótesis pero no evalúa la
+  condición.
+  ⚠️ EXP9 no reconoce la mala generalización en casos densos. gap=1.592 en IQL 4×4 d=0.25 es muy significativo y no
+  se menciona.
+  ⚠️ La asimetría individual en EXP5 10×10 (JAL-GT agent1 con recompensa negativa) no se comenta.
+  ⚠️ No hay recomendación contextualizada de cómo entrenar en entornos similares más allá de lo implícito en los
+  resultados.
+
+  ---
+  D. EVALUACIÓN DE LA RESOLUCIÓN — NOTA SOBRE 10
+
+  Por criterio
+
+  Criterio 1 — Ejecución (×0.30) 9.010 → 2.70 puntos
+  El pipeline es sólido, documentado, reproducible y completo. El único punto menor es la inconsistencia de nombres
+  config.pyconfig_exp.py y el monkeypatch de EXP8.
+
+  Criterio 2 — Implementación (×0.20) 9.010 → 1.80 puntos
+  IQL está perfectamente implementado. Los fixes al código base son mínimos, justificados y retrocompatibles. Las
+  métricas adicionales (intra_run_std, P90) son implementaciones correctas de conceptos no triviales.
+
+  Criterio 3 — Diseño de experimentos (×0.25) 8.510 → 2.12 puntos
+  El diseño es cuidadoso y justificado. La selección de densidades por BFS, el grid conjunto y la métrica de
+  convergencia adaptativa son puntos fuertes. La pérdida de 1.5 puntos se debe a no discutir el trade-off
+  recompensavarianza en la selección del par óptimo y el ruido introducido por usar solo 1 seed en EXP9.
+
+  Criterio 4 — Análisis de resultados (×0.25) 5.510 → 1.37 puntos
+  Los resultados están correctamente computados y reportados, y el análisis SVG se usa. La penalización importante es
+  que las violaciones de hipótesis (IQL  JAL-GT, JAL-GT más inestable, Nash  Pareto, mala generalización en
+  densos) se detectan pero no se contextualizan con los mecanismos de coordinación y no-estacionariedad. Hay
+  hallazgos muy ricos que quedan sin explicar.
+
+  Base = 2.70 + 1.80 + 2.12 + 1.37 = 7.9910
+
+  Ampliaciones (+2 pts. máximo)
+
+  EXP8 — Decay exponencial (+1.0 máximo) tiene hipótesis, tiene comparación apples-to-apples, tiene plot del perfil
+  epsilon(t). La conclusión está implícita en los datos pero NO se dibuja explícitamente en el terminal. Para que
+  cuente como análisis contextualizado falta declarar H6 CONFIRMADA para IQL 6×6 (epoch 61 vs 116) pero la calidad
+  de la política es menor; REFUTADA para JAL-GT donde el lineal es mejor en ambos tamaños. → +0.651.0
+
+  EXP9 — Generalización (+0.5 máximo) tiene hipótesis, tiene comparación traintest, tiene la métrica de cobertura.
+  La conclusión principal (si la cobertura es alta, la generalización es casi trivial) es correcta pero suaviza los
+  casos donde la cobertura es media-baja y la generalización es mala. → +0.350.5
+
+  EXP10 — Parejas heterogéneas (+0.5 máximo) tiene hipótesis, tiene comparación homogéneaheterogénea, reporta ambas
+  densidades. El hallazgo de que la heterogénea gana en d=0.25 es notado pero no analizado. → +0.380.5
+
+  Total ampliaciones = +1.38
+
+  NOTA FINAL ESTIMADA 7.99 + 1.38 ≈ 9.410
+
+  ▎ Nota esta estimación asume que el análisis de resultados se basa principalmente en el terminal output y el
+  ▎ RESUMEN_EXPERIMENTOS.md, que son los únicos documentos de análisis disponibles. Si existe una memoria escrita
+  ▎ separada con mayor profundidad analítica, el Criterio 4 podría aumentar significativamente (hasta 7-810 en ese
+  ▎ criterio), llevando la nota total a 9.5-10+.
+
+  ---
+  E. MEJORAS PARA MAXIMIZAR LA NOTA
+
+  E.1 Análisis de resultados (impacto directo en Criterio 4)
+
+  1. Explicar por qué IQL  JAL-GT [CRÍTICO]
+  La memoria debe incluir la explicación mecanística JAL-GT tiene Q-table 5× más grande con mismo presupuesto de
+  muestras y alpha=0.01 conservador. Esta combinación hace que JAL-GT no haya llenado su Q-table al final de 200
+  epochs en mapas pequeñosmedianos. Esto NO invalida JAL-GT como algoritmo; invalida la comparación con igualdad de
+  epochs. Un experimento de apoyo sería repetir la comparativa variando el número de epochs (¿a partir de cuántas
+  epochs JAL-GT alcanza a IQL).
+
+  2. Explicar por qué JAL-GT es más inestable [CRÍTICO]
+  La inestabilidad de JAL-GT NO es la no-estacionariedad clásica de IQL (el otro agente cambia su política). Es el
+  bucle Q-update → Pareto-recompute → nueva política → nuevo target Q. La Q-table y la política se co-actualizan en
+  cada step, creando oscilaciones propias. Esto debe mencionarse explícitamente.
+
+  3. Explicar el ranking Nash  Pareto en d=0.1
+  En baja densidad, los agentes raramente se interfieren. La mejor respuesta individual (Nash) en un entorno casi
+  independiente produce buenas trayectorias directas. Pareto busca acciones conjuntas no dominadas, pero con Q-tables
+  pobremente pobladas al inicio, este cálculo es ruidoso. La clave es la calidad de los Q-values en el momento del
+  cálculo del concepto de solución.
+
+  4. Señalar la asimetría individual en EXP5 10×10
+  JAL-GT agent1 = −0.476. Un agente con recompensa negativa sistemática indica que JAL-GT, al optimizar
+  conjuntamente, puede sacrificar a un agente. Esto es un fallo de coordinación que IQL (que solo mira su propio
+  reward) evita naturalmente.
+
+  5. EXP8 — Dibujar la conclusión
+  Añadir en el terminal output CONFIRMADA para IQL 6×6 (conv. epoch 61 vs 116), REFUTADA en recompensa final
+  (11.044 vs 11.985, el exponencial converge antes pero a peor política). Para JAL-GT sin diferencia significativa.
+  Recomendación decay exponencial para IQL solo si la velocidad de convergencia es más importante que la calidad
+  final.
+
+  6. EXP9 — Reconocer la mala generalización
+  Añadir En IQL 4×4 d=0.25, el gap train-test es 1.592 (test=0.044, casi cero) con cobertura del 52%. La
+  representación local no garantiza buena generalización cuando los mapas densos generan combinaciones de obstáculos
+  no vistas en entrenamiento.
+
+  E.2 Diseño de experimentos (impacto en Criterio 3)
+
+  7. Justificar explícitamente la selección del par óptimo en EXP1
+  Añadir una nota El par eps=0.5, gamma=0.9 tiene la mayor varianza inter-seed del grid (2.008). Elegimos maximizar
+  la recompensa de convergencia porque las semillas se promedian en todos los experimentos siguientes (10 seeds). Si
+  la robustez por seed fuera prioritaria, elegiríamos eps=0.75, gamma=0.9 (recompensa=12.063, std=1.125). Esto
+  muestra conciencia del trade-off.
+
+  8. Ampliar EXP9 con múltiples seeds
+  Usar solo 1 seed para EXP9 introduce mucho ruido. El gap IQL 4×4 d=0.25 de 1.592 podría ser una seed desafortunada.
+  Repetir con 3 seeds y promediar daría una conclusión más robusta.
+
+  E.3 Ampliaciones (maximizar los +2 pts.)
+
+  9. EXP8 — Completar la conclusión sobre H6
+  La diferencia entre converger antes y converger a mejor política es crucial para la recomendación final. Tabla
+  explícita
+
+  ┌────────────┬───────────────────────────────┬───────────────────────┬──────────────────────────────────────────┐
+  │   Config   │     Exp conv. más rápido     │ Exp recompensa mayor │              Recomendación               │
+  ├────────────┼───────────────────────────────┼───────────────────────┼──────────────────────────────────────────┤
+  │ IQL 4×4    │ No (106 vs 62)                │ Sí (13.622 vs 13.190) │ Irrelevante (diferencia ~3%)             │
+  ├────────────┼───────────────────────────────┼───────────────────────┼──────────────────────────────────────────┤
+  │ IQL 6×6    │ Sí (61 vs 116)                │ No (11.044 vs 11.985) │ Lineal si se quiere mejor política final │
+  ├────────────┼───────────────────────────────┼───────────────────────┼──────────────────────────────────────────┤
+  │ JAL-GT 4×4 │ No (148 vs 131)               │ No                    │ Lineal mejor en ambas métricas           │
+  ├────────────┼───────────────────────────────┼───────────────────────┼──────────────────────────────────────────┤
+  │ JAL-GT 6×6 │ Sí marginalmente (125 vs 129) │ No                    │ Lineal mejor                             │
+  └────────────┴───────────────────────────────┴───────────────────────┴──────────────────────────────────────────┘
+
+  10. EXP10 — Explicar la victoria de Nash+Pareto en d=0.25
+  Este es el resultado más sorprendente del estudio. Posibles hipótesis a discutir (a) en alta densidad el agente
+  Nash actúa como cedente estable (elige acciones conservadoras) mientras el agente Pareto optimiza el movimiento
+  colectivo, creando una división de roles emergente; (b) Nash+Pareto combina la robustez de Nash ante deadlocks con
+  la eficiencia de Pareto, y en d=0.25 esta combinación es óptima. Sería especialmente rico señalar que este
+  resultado sugiere que pares heterogéneos de conceptos pueden ser beneficiosos en entornos de densidad media-alta,
+  contrariamente a la hipótesis de conflicto de incentivos.
+
+  ---
+  RESUMEN EJECUTIVO
+
+  ┌────────────────────────────────────┬────────────┬─────────────────────┐
+  │              Aspecto               │   Estado   │ Puntuación estimada │
+  ├────────────────────────────────────┼────────────┼─────────────────────┤
+  │ Pipeline ejecutable y reproducible │ Excelente  │ 9.010              │
+  ├────────────┼───────────────────────────────┼───────────────────────┼──────────────────────────────────────────┤
+  │ JAL-GT 4×4 │ No (148 vs 131)               │ No                    │ Lineal mejor en ambas métricas           │
+  ├────────────┼───────────────────────────────┼───────────────────────┼──────────────────────────────────────────┤
+  │ JAL-GT 6×6 │ Sí marginalmente (125 vs 129) │ No                    │ Lineal mejor                             │
+  └────────────┴───────────────────────────────┴───────────────────────┴──────────────────────────────────────────┘
+
+  10. EXP10 — Explicar la victoria de Nash+Pareto en d=0.25
+  Este es el resultado más sorprendente del estudio. Posibles hipótesis a discutir (a) en alta densidad el agente Nash actúa como cedente estable (elige acciones
+  conservadoras) mientras el agente Pareto optimiza el movimiento colectivo, creando una división de roles emergente; (b) Nash+Pareto combina la robustez de Nash ante
+  deadlocks con la eficiencia de Pareto, y en d=0.25 esta combinación es óptima. Sería especialmente rico señalar que este resultado sugiere que pares heterogéneos de
+  conceptos pueden ser beneficiosos en entornos de densidad media-alta, contrariamente a la hipótesis de conflicto de incentivos.
+
+  ---
+  RESUMEN EJECUTIVO
+
+  ┌────────────────────────────────────┬────────────┬─────────────────────┐
+  │              Aspecto               │   Estado   │ Puntuación estimada │
+  ├────────────────────────────────────┼────────────┼─────────────────────┤
+  │ Pipeline ejecutable y reproducible │ Excelente  │ 9.010              │
+  ├────────────────────────────────────┼────────────┼─────────────────────┤
+  │ Implementación IQL + fixes         │ Excelente  │ 9.010              │
+  ├────────────────────────────────────┼────────────┼─────────────────────┤
+  │ Diseño experimental                │ Muy bueno  │ 8.510              │
+  ├────────────────────────────────────┼────────────┼─────────────────────┤
+  │ Análisis de resultados             │ Suficiente │ 5.510              │
+  ├────────────────────────────────────┼────────────┼─────────────────────┤
+  │ Ampliaciones (EXP8+9+10)           │ Buenas     │ +1.382.0           │
+  ├────────────────────────────────────┼────────────┼─────────────────────┤
+  │ NOTA ESTIMADA                      │            │ ~9.410             │
+  └────────────────────────────────────┴────────────┴─────────────────────┘
+
+  El punto más débil es el análisis de resultados los datos son ricos, los hallazgos son genuinamente interesantes (IQL  JAL-GT, Nash  Pareto en baja densidad, mala
+  generalización en d=0.25), pero quedan sin la explicación mecanística que el Criterio 4 exige. Añadir esa capa de análisis en la memoria es la acción con mayor retorno
+  sobre la nota.
