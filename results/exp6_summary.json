@@ -1,0 +1,49 @@
+{
+  "experiment": "exp6_concepts",
+  "data": {
+    "density0.1": {
+      "Nash": {
+        "conv_reward": 11.627200216206063,
+        "final_collective": 11.386,
+        "train_time": 25.688365864753724
+      },
+      "Pareto": {
+        "conv_reward": 9.010733579800482,
+        "final_collective": 8.803999999999998,
+        "train_time": 56.28969922065735
+      },
+      "Welfare": {
+        "conv_reward": 6.641765614976309,
+        "final_collective": 6.793000000000001,
+        "train_time": 32.627144956588744
+      },
+      "Minimax": {
+        "conv_reward": -2.451759884941105,
+        "final_collective": -2.544,
+        "train_time": 31.23593063354492
+      }
+    },
+    "density0.25": {
+      "Nash": {
+        "conv_reward": 4.306844138443676,
+        "final_collective": 4.220999999999999,
+        "train_time": 31.938092255592345
+      },
+      "Pareto": {
+        "conv_reward": 4.4906032738095245,
+        "final_collective": 4.455,
+        "train_time": 58.99677791595459
+      },
+      "Welfare": {
+        "conv_reward": 1.879679091854689,
+        "final_collective": 1.8470000000000002,
+        "train_time": 29.725833034515382
+      },
+      "Minimax": {
+        "conv_reward": -2.4074828747768002,
+        "final_collective": -2.5489999999999995,
+        "train_time": 29.46142747402191
+      }
+    }
+  }
+}

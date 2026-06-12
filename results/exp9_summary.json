@@ -1,0 +1,77 @@
+{
+  "experiment": "exp9_generalization",
+  "data": {
+    "exp9_IQL_size4_d0.1": {
+      "reward_train": 0.95,
+      "reward_test": 0.724,
+      "gap": 0.22599999999999998,
+      "state_coverage": 0.5454545454545454
+    },
+    "exp9_IQL_size6_d0.1": {
+      "reward_train": 1.1640000000000001,
+      "reward_test": 0.49399999999999994,
+      "gap": 0.6700000000000002,
+      "state_coverage": 0.45714285714285713
+    },
+    "exp9_IQL_size10_d0.1": {
+      "reward_train": 0.9099999999999999,
+      "reward_test": 0.813,
+      "gap": 0.09699999999999998,
+      "state_coverage": 0.6818181818181818
+    },
+    "exp9_IQL_size4_d0.25": {
+      "reward_train": 1.636,
+      "reward_test": 0.044000000000000004,
+      "gap": 1.5919999999999999,
+      "state_coverage": 0.52
+    },
+    "exp9_IQL_size6_d0.25": {
+      "reward_train": 0.817,
+      "reward_test": 0.379,
+      "gap": 0.43799999999999994,
+      "state_coverage": 0.5588235294117647
+    },
+    "exp9_IQL_size10_d0.25": {
+      "reward_train": 0.48200000000000004,
+      "reward_test": 0.03799999999999999,
+      "gap": 0.44400000000000006,
+      "state_coverage": 0.6
+    },
+    "exp9_JAL-GT_size4_d0.1": {
+      "reward_train": 1.2830000000000001,
+      "reward_test": 0.7230000000000001,
+      "gap": 0.56,
+      "state_coverage": 0.6060606060606061
+    },
+    "exp9_JAL-GT_size6_d0.1": {
+      "reward_train": 0.8249999999999998,
+      "reward_test": 0.26200000000000007,
+      "gap": 0.5629999999999997,
+      "state_coverage": 0.6538461538461539
+    },
+    "exp9_JAL-GT_size10_d0.1": {
+      "reward_train": 1.025,
+      "reward_test": 0.827,
+      "gap": 0.19799999999999995,
+      "state_coverage": 0.631578947368421
+    },
+    "exp9_JAL-GT_size4_d0.25": {
+      "reward_train": 1.409,
+      "reward_test": 0.044000000000000004,
+      "gap": 1.365,
+      "state_coverage": 0.5833333333333334
+    },
+    "exp9_JAL-GT_size6_d0.25": {
+      "reward_train": 0.4910000000000001,
+      "reward_test": 0.386,
+      "gap": 0.1050000000000001,
+      "state_coverage": 0.5
+    },
+    "exp9_JAL-GT_size10_d0.25": {
+      "reward_train": 0.15099999999999997,
+      "reward_test": -0.075,
+      "gap": 0.22599999999999998,
+      "state_coverage": 0.56
+    }
+  }
+}

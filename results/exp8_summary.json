@@ -1,0 +1,13 @@
+{
+  "experiment": "exp8_decay",
+  "data": {
+    "IQL_size4_lineal": 13.190279361532323,
+    "IQL_size4_exponencial": 13.622,
+    "JAL-GT_size4_lineal": 12.470984794854777,
+    "JAL-GT_size4_exponencial": 11.843644204408575,
+    "IQL_size6_lineal": 11.985207521131617,
+    "IQL_size6_exponencial": 11.04396256684492,
+    "JAL-GT_size6_lineal": 9.010733579800482,
+    "JAL-GT_size6_exponencial": 8.447143162046093
+  }
+}

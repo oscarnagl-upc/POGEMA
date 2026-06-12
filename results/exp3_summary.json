@@ -1,0 +1,8 @@
+{
+  "experiment": "exp3_validate_large",
+  "results": {
+    "optimo": 9.897593469063988,
+    "baseline": 9.542812012578532
+  },
+  "decision": "El par óptimo se mantiene mejor o igual en 10x10 (9.898 vs 9.543). Confirmada la transferencia a mapas grandes."
+}

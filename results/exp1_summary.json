@@ -1,0 +1,177 @@
+{
+  "experiment": "exp1_hyperparams",
+  "grid_epsilon": [
+    0.5,
+    0.75,
+    1.0
+  ],
+  "grid_gamma": [
+    0.9,
+    0.95,
+    0.99
+  ],
+  "conv_reward_matrix": [
+    [
+      12.470984794854777,
+      12.031360260760337,
+      12.04247306754807
+    ],
+    [
+      12.062743231755169,
+      11.893408215383227,
+      11.707683822730536
+    ],
+    [
+      11.071626485167725,
+      11.247283285767006,
+      12.419219927880246
+    ]
+  ],
+  "inter_seed_std_matrix": [
+    [
+      2.0081543765358276,
+      1.3791461126363669,
+      1.705492304292224
+    ],
+    [
+      1.1249644438825614,
+      1.7558769888577046,
+      1.4098613406998581
+    ],
+    [
+      1.616253692957885,
+      2.273158375476729,
+      1.2389305872404643
+    ]
+  ],
+  "best_epsilon": 0.5,
+  "best_gamma": 0.9,
+  "runs": [
+    {
+      "run_name": "exp1_eps0.5_gamma0.9",
+      "final_collective": 12.064000000000002,
+      "conv_epoch_mean": 131.2,
+      "conv_reward_mean": 12.470984794854777,
+      "inter_seed_std_final": 2.0081543765358276,
+      "intra_run_std_mean": 0.4815433059670681,
+      "train_time_mean": 40.55509433746338,
+      "individual_final": [
+        5.881,
+        6.183
+      ],
+      "csv_path": "results/exp1_eps0.5_gamma0.9.csv"
+    },
+    {
+      "run_name": "exp1_eps0.5_gamma0.95",
+      "final_collective": 11.846,
+      "conv_epoch_mean": 139.3,
+      "conv_reward_mean": 12.031360260760337,
+      "inter_seed_std_final": 1.3791461126363669,
+      "intra_run_std_mean": 0.30454981797110375,
+      "train_time_mean": 42.37463643550873,
+      "individual_final": [
+        5.894,
+        5.951999999999999
+      ],
+      "csv_path": "results/exp1_eps0.5_gamma0.95.csv"
+    },
+    {
+      "run_name": "exp1_eps0.5_gamma0.99",
+      "final_collective": 11.844,
+      "conv_epoch_mean": 126.1,
+      "conv_reward_mean": 12.04247306754807,
+      "inter_seed_std_final": 1.705492304292224,
+      "intra_run_std_mean": 0.42067905363574737,
+      "train_time_mean": 41.47837128639221,
+      "individual_final": [
+        5.547,
+        6.297
+      ],
+      "csv_path": "results/exp1_eps0.5_gamma0.99.csv"
+    },
+    {
+      "run_name": "exp1_eps0.75_gamma0.9",
+      "final_collective": 12.085000000000003,
+      "conv_epoch_mean": 149.2,
+      "conv_reward_mean": 12.062743231755169,
+      "inter_seed_std_final": 1.1249644438825614,
+      "intra_run_std_mean": 0.6364783988403684,
+      "train_time_mean": 44.44866268634796,
+      "individual_final": [
+        5.8870000000000005,
+        6.1979999999999995
+      ],
+      "csv_path": "results/exp1_eps0.75_gamma0.9.csv"
+    },
+    {
+      "run_name": "exp1_eps0.75_gamma0.95",
+      "final_collective": 11.724,
+      "conv_epoch_mean": 148.9,
+      "conv_reward_mean": 11.893408215383227,
+      "inter_seed_std_final": 1.7558769888577046,
+      "intra_run_std_mean": 0.5457334891775252,
+      "train_time_mean": 43.98245091438294,
+      "individual_final": [
+        5.762,
+        5.962
+      ],
+      "csv_path": "results/exp1_eps0.75_gamma0.95.csv"
+    },
+    {
+      "run_name": "exp1_eps0.75_gamma0.99",
+      "final_collective": 11.941,
+      "conv_epoch_mean": 167.1,
+      "conv_reward_mean": 11.707683822730536,
+      "inter_seed_std_final": 1.4098613406998581,
+      "intra_run_std_mean": 0.5896771841477806,
+      "train_time_mean": 44.37325847148895,
+      "individual_final": [
+        5.872,
+        6.069
+      ],
+      "csv_path": "results/exp1_eps0.75_gamma0.99.csv"
+    },
+    {
+      "run_name": "exp1_eps1.0_gamma0.9",
+      "final_collective": 11.288,
+      "conv_epoch_mean": 143.2,
+      "conv_reward_mean": 11.071626485167725,
+      "inter_seed_std_final": 1.616253692957885,
+      "intra_run_std_mean": 0.6835388232820782,
+      "train_time_mean": 47.71700785160065,
+      "individual_final": [
+        5.662,
+        5.6259999999999994
+      ],
+      "csv_path": "results/exp1_eps1.0_gamma0.9.csv"
+    },
+    {
+      "run_name": "exp1_eps1.0_gamma0.95",
+      "final_collective": 11.620999999999999,
+      "conv_epoch_mean": 131.6,
+      "conv_reward_mean": 11.247283285767006,
+      "inter_seed_std_final": 2.273158375476729,
+      "intra_run_std_mean": 0.6741710243104126,
+      "train_time_mean": 47.54322814941406,
+      "individual_final": [
+        5.767999999999999,
+        5.853
+      ],
+      "csv_path": "results/exp1_eps1.0_gamma0.95.csv"
+    },
+    {
+      "run_name": "exp1_eps1.0_gamma0.99",
+      "final_collective": 12.850999999999999,
+      "conv_epoch_mean": 157.0,
+      "conv_reward_mean": 12.419219927880246,
+      "inter_seed_std_final": 1.2389305872404643,
+      "intra_run_std_mean": 0.8689580932041402,
+      "train_time_mean": 47.764783549308774,
+      "individual_final": [
+        6.556,
+        6.294999999999999
+      ],
+      "csv_path": "results/exp1_eps1.0_gamma0.99.csv"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "experiment": "exp2_iql_transfer",
+  "epsilon_used": 0.5,
+  "iql_conv_by_gamma": {
+    "0.9": 13.190279361532323,
+    "0.95": 12.856288743479734,
+    "0.99": 12.123092222222223
+  },
+  "best_gamma_iql": 0.9,
+  "best_gamma_jalgt": 0.9,
+  "decision": "El gamma óptimo de IQL (0.9) COINCIDE con el de JAL-GT (0.9). Usamos el mismo par: fairness perfecta."
+}

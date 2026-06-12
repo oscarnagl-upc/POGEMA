@@ -1,0 +1,4 @@
+svg,agent0_moves,agent1_moves,agent0_efficiency,agent1_efficiency,any_deadlock,both_deadlock,potential_collision,yielding_pattern
+exp6_Nash-size6-d0.25-map0.svg,15,2,0.2,1.0,False,False,False,True
+exp6_Nash-size6-d0.25-map1.svg,0,16,0.0,0.0,True,False,False,False
+exp6_Nash-size6-d0.25-map2.svg,2,16,1.0,0.125,False,False,False,True

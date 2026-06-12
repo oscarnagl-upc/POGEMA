@@ -1,0 +1,318 @@
+(POGEMA) oscar@Oscar-Laptop:.../Laboratorio/POGEMA$ python experiments.py
+
+==============================================================================
+  BATERÍA DE EXPERIMENTOS -- Práctica 3 SID
+==============================================================================
+Modo: COMPLETO | epochs=200
+Seeds de entrenamiento: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+Densidades: baja=0.1, media=0.25
+Grid hiperparámetros: epsilon in [0.5, 0.75, 1.0], gamma in [0.9, 0.95, 0.99]
+Las conclusiones se trasladan automáticamente entre experimentos.
+
+==============================================================================
+  EXPERIMENTO 1 -- Estudio conjunto de (epsilon, gamma)
+==============================================================================
+Objetivo: caracterizar el efecto de epsilon y gamma y fijar el par óptimo
+Algoritmo: JAL-GT (Pareto) | Mapa: 4x4 | Densidad: 0.1 | Seeds: 0..9
+Hipótesis:
+  - epsilon alto reduce la varianza inter-seed (mejor cobertura inicial).
+  - gamma alto es necesario para propagar la recompensa terminal (objetivo
+    a varios pasos). El step penalty refuerza esta preferencia.
+Grid: epsilon in [0.5, 0.75, 1.0] x gamma in [0.9, 0.95, 0.99]  (9 runs)
+
+>> Run: epsilon_max=0.5, gamma=0.9
+     recompensa en convergencia = 12.471 | std inter-seed = 2.008
+
+>> Run: epsilon_max=0.5, gamma=0.95
+     recompensa en convergencia = 12.031 | std inter-seed = 1.379
+
+>> Run: epsilon_max=0.5, gamma=0.99
+     recompensa en convergencia = 12.042 | std inter-seed = 1.705
+
+>> Run: epsilon_max=0.75, gamma=0.9
+     recompensa en convergencia = 12.063 | std inter-seed = 1.125
+
+>> Run: epsilon_max=0.75, gamma=0.95
+     recompensa en convergencia = 11.893 | std inter-seed = 1.756
+
+>> Run: epsilon_max=0.75, gamma=0.99
+     recompensa en convergencia = 11.708 | std inter-seed = 1.410
+
+>> Run: epsilon_max=1.0, gamma=0.9
+     recompensa en convergencia = 11.072 | std inter-seed = 1.616
+
+>> Run: epsilon_max=1.0, gamma=0.95
+     recompensa en convergencia = 11.247 | std inter-seed = 2.273
+
+>> Run: epsilon_max=1.0, gamma=0.99
+     recompensa en convergencia = 12.419 | std inter-seed = 1.239
+
+>> CONCLUSIÓN EXP1: par óptimo encontrado = (epsilon_max=0.5, gamma=0.9)
+   Este par se trasladará a los experimentos siguientes.
+
+==============================================================================
+  EXPERIMENTO 2 -- Transferencia de gamma a IQL
+==============================================================================
+Objetivo: verificar que el gamma óptimo de JAL-GT es razonable para IQL
+Algoritmo: IQL | epsilon fijo = 0.5 | Mapa 4x4 | Densidad 0.1
+Hipótesis: IQL tiene dinámica más estable (5 vs 25 valores por estado),
+  por lo que su gamma óptimo debería coincidir o ser cercano al de JAL-GT.
+
+>> Run IQL: gamma=0.9
+     recompensa en convergencia = 13.190
+
+>> Run IQL: gamma=0.95
+     recompensa en convergencia = 12.856
+
+>> Run IQL: gamma=0.99
+     recompensa en convergencia = 12.123
+
+>> CONCLUSIÓN EXP2: El gamma óptimo de IQL (0.9) COINCIDE con el de JAL-GT (0.9). Usamos el mismo par: fairness perfecta.
+
+==============================================================================
+  EXPERIMENTO 3 -- Validación del par óptimo en mapa grande (10x10)
+==============================================================================
+Objetivo: comprobar si el par óptimo de 4x4 transfiere a 10x10
+Comparamos (eps=0.5, gamma=0.9) contra el baseline (1.0, 0.95)
+Hipótesis: los mapas grandes podrían necesitar más exploración; el par
+  óptimo de 4x4 podría no ser óptimo en 10x10.
+
+>> Run optimo: epsilon=0.5, gamma=0.9
+     recompensa en convergencia = 9.898
+
+>> Run baseline: epsilon=1.0, gamma=0.95
+     recompensa en convergencia = 9.543
+
+>> CONCLUSIÓN EXP3: El par óptimo se mantiene mejor o igual en 10x10 (9.898 vs 9.543). Confirmada la transferencia a mapas grandes.
+
+==============================================================================
+  EXPERIMENTO 4 -- IQL vs JAL-GT (densidad 0.1)
+==============================================================================
+Objetivo: comparativa algorítmica principal (recompensa individual y
+colectiva, estabilidad, efecto de la no-estacionariedad sobre IQL).
+Tamaños: [4, 6, 10] | epsilon=0.5 | gamma=0.9
+Hipótesis:
+  - JAL-GT supera a IQL en recompensa colectiva (modela coordinación).
+  - IQL muestra MAYOR inestabilidad intra-run: firma de no-estacionariedad.
+  - La brecha crece con el tamaño del mapa y con la densidad.
+
+--- Tamaño 4x4 ---
+    IQL: recompensa final=13.189 | convergencia=13.190 | inestabilidad intra-run=0.039 | tiempo=6.1s
+    JAL-GT: recompensa final=12.064 | convergencia=12.471 | inestabilidad intra-run=0.482 | tiempo=41.5s
+    -> brecha JAL-GT - IQL (convergencia) = -0.719
+    -> IQL NO más inestable que JAL-GT aquí (0.039 <= 0.482)
+
+--- Tamaño 6x6 ---
+    IQL: recompensa final=11.935 | convergencia=11.985 | inestabilidad intra-run=0.038 | tiempo=7.7s
+    JAL-GT: recompensa final=8.804 | convergencia=9.011 | inestabilidad intra-run=0.471 | tiempo=49.7s
+    -> brecha JAL-GT - IQL (convergencia) = -2.974
+    -> IQL NO más inestable que JAL-GT aquí (0.038 <= 0.471)
+
+--- Tamaño 10x10 ---
+    IQL: recompensa final=9.352 | convergencia=9.144 | inestabilidad intra-run=0.064 | tiempo=10.3s
+    JAL-GT: recompensa final=9.798 | convergencia=9.898 | inestabilidad intra-run=0.535 | tiempo=54.9s
+    -> brecha JAL-GT - IQL (convergencia) = +0.754
+    -> IQL NO más inestable que JAL-GT aquí (0.064 <= 0.535)
+
+==============================================================================
+  EXPERIMENTO 5 -- IQL vs JAL-GT (densidad 0.25)
+==============================================================================
+Objetivo: comparativa algorítmica principal (recompensa individual y
+colectiva, estabilidad, efecto de la no-estacionariedad sobre IQL).
+Tamaños: [4, 6, 10] | epsilon=0.5 | gamma=0.9
+Hipótesis:
+  - JAL-GT supera a IQL en recompensa colectiva (modela coordinación).
+  - IQL muestra MAYOR inestabilidad intra-run: firma de no-estacionariedad.
+  - La brecha crece con el tamaño del mapa y con la densidad.
+
+--- Tamaño 4x4 ---
+    IQL: recompensa final=14.192 | convergencia=14.306 | inestabilidad intra-run=0.027 | tiempo=5.5s
+    JAL-GT: recompensa final=13.719 | convergencia=13.855 | inestabilidad intra-run=0.426 | tiempo=38.3s
+    -> brecha JAL-GT - IQL (convergencia) = -0.451
+    -> IQL NO más inestable que JAL-GT aquí (0.027 <= 0.426)
+
+--- Tamaño 6x6 ---
+    IQL: recompensa final=6.536 | convergencia=6.577 | inestabilidad intra-run=0.177 | tiempo=8.2s
+    JAL-GT: recompensa final=4.455 | convergencia=4.491 | inestabilidad intra-run=0.579 | tiempo=56.0s
+    -> brecha JAL-GT - IQL (convergencia) = -2.086
+    -> IQL NO más inestable que JAL-GT aquí (0.177 <= 0.579)
+
+--- Tamaño 10x10 ---
+    IQL: recompensa final=4.410 | convergencia=4.345 | inestabilidad intra-run=0.624 | tiempo=10.1s
+    JAL-GT: recompensa final=2.213 | convergencia=1.966 | inestabilidad intra-run=0.597 | tiempo=53.8s
+    -> brecha JAL-GT - IQL (convergencia) = -2.378
+    -> IQL más inestable que JAL-GT (no-estacionariedad confirmada): 0.624 > 0.597
+
+  [SVG] Hallazgos automáticos para exp5 IQL (6x6, d=0.25)  (n=3):
+    - deadlocks (algún agente quieto):  0.0%
+    - deadlocks dobles (ambos quietos): 0.0%
+    - colisiones/intercambios potenciales: 0.0%
+    - patrón de cesión de paso:         100.0%
+    - eficiencia media de trayectoria:  0.66 (1.0 = directa)
+    Comprueba estos valores abriendo los SVG correspondientes en el navegador.
+
+  [SVG] Hallazgos automáticos para exp5 JAL-GT (6x6, d=0.25)  (n=3):
+    - deadlocks (algún agente quieto):  0.0%
+    - deadlocks dobles (ambos quietos): 0.0%
+    - colisiones/intercambios potenciales: 0.0%
+    - patrón de cesión de paso:         100.0%
+    - eficiencia media de trayectoria:  0.576 (1.0 = directa)
+    Comprueba estos valores abriendo los SVG correspondientes en el navegador.
+
+==============================================================================
+  EXPERIMENTO 6 -- Conceptos de solución en JAL-GT (6x6)
+==============================================================================
+Objetivo: comparar Nash/Pareto/Welfare/Minimax: comportamiento inducido,
+coordinación y recompensas. Dos densidades para contraste situacional.
+epsilon=0.5 | gamma=0.9
+Hipótesis:
+  - Pareto y Welfare: mejores en entorno cooperativo (pueden coincidir).
+  - Nash: algo peor, riesgo de deadlock si 'ambos quietos' es equilibrio.
+  - Minimax: el peor, trata al colaborador como adversario.
+
+--- Densidad 0.1 ---
+    Nash: convergencia=11.627 | tiempo=25.7s
+    Pareto: convergencia=9.011 | tiempo=56.3s
+    Welfare: convergencia=6.642 | tiempo=32.6s
+    Minimax: convergencia=-2.452 | tiempo=31.2s
+    -> Ranking (d=0.1): Nash(11.63) > Pareto(9.01) > Welfare(6.64) > Minimax(-2.45)
+
+--- Densidad 0.25 ---
+    Nash: convergencia=4.307 | tiempo=31.9s
+    Pareto: convergencia=4.491 | tiempo=59.0s
+    Welfare: convergencia=1.880 | tiempo=29.7s
+    Minimax: convergencia=-2.407 | tiempo=29.5s
+
+  [SVG] Hallazgos automáticos para EXP6 Nash (6x6, d=0.25)  (n=3):
+    - deadlocks (algún agente quieto):  33.3%
+    - deadlocks dobles (ambos quietos): 0.0%
+    - colisiones/intercambios potenciales: 0.0%
+    - patrón de cesión de paso:         66.7%
+    - eficiencia media de trayectoria:  0.388 (1.0 = directa)
+    Comprueba estos valores abriendo los SVG correspondientes en el navegador.
+
+  [SVG] Hallazgos automáticos para EXP6 Pareto (6x6, d=0.25)  (n=3):
+    - deadlocks (algún agente quieto):  0.0%
+    - deadlocks dobles (ambos quietos): 0.0%
+    - colisiones/intercambios potenciales: 0.0%
+    - patrón de cesión de paso:         100.0%
+    - eficiencia media de trayectoria:  0.576 (1.0 = directa)
+    Comprueba estos valores abriendo los SVG correspondientes en el navegador.
+
+  [SVG] Hallazgos automáticos para EXP6 Welfare (6x6, d=0.25)  (n=3):
+    - deadlocks (algún agente quieto):  33.3%
+    - deadlocks dobles (ambos quietos): 0.0%
+    - colisiones/intercambios potenciales: 0.0%
+    - patrón de cesión de paso:         33.3%
+    - eficiencia media de trayectoria:  0.188 (1.0 = directa)
+    Comprueba estos valores abriendo los SVG correspondientes en el navegador.
+
+  [SVG] Hallazgos automáticos para EXP6 Minimax (6x6, d=0.25)  (n=3):
+    - deadlocks (algún agente quieto):  100.0%
+    - deadlocks dobles (ambos quietos): 66.7%
+    - colisiones/intercambios potenciales: 0.0%
+    - patrón de cesión de paso:         33.3%
+    - eficiencia media de trayectoria:  0.167 (1.0 = directa)
+    Comprueba estos valores abriendo los SVG correspondientes en el navegador.
+    -> Ranking (d=0.25): Pareto(4.49) > Nash(4.31) > Welfare(1.88) > Minimax(-2.41)
+
+==============================================================================
+  EXPERIMENTO 7 -- Contraste situacional Pareto vs Minimax (4x4 y 10x10)
+==============================================================================
+Objetivo: sustentar 'en qué situaciones es más adecuado cada concepto'
+añadiendo variación de tamaño barata (los dos conceptos más contrastantes).
+epsilon=0.5 | gamma=0.9 | densidad=0.1
+Hipótesis: el ranking puede depender del tamaño; en mapas pequeños las
+  diferencias se diluyen, en grandes se amplifican.
+
+--- Tamaño 4x4 ---
+    Pareto: convergencia=12.471
+    Minimax: convergencia=-1.514
+
+--- Tamaño 10x10 ---
+    Pareto: convergencia=9.898
+    Minimax: convergencia=-2.422
+
+>> CONCLUSIÓN EXP7: brecha Pareto-Minimax en 4x4 = +13.985, en 10x10 = +12.320
+   La diferencia entre conceptos NO se amplifica con el tamaño.
+
+==============================================================================
+  EXPERIMENTO 8 (+1) -- Decay exponencial vs lineal de epsilon
+==============================================================================
+Objetivo: mejora metodológica sobre el decay de EPSILON (no alpha).
+Comparamos el decay lineal del baseline contra un decay exponencial,
+apples-to-apples (mismo eps_max, eps_min y nº de episodios).
+epsilon_max=0.5 | gamma=0.9 | densidad=0.1
+Hipótesis: el exponencial concentra exploración al inicio y cae más
+  rápido a explotación; debería converger antes en mapas medianos (6x6),
+  con diferencia marginal en 4x4.
+
+--- Tamaño 4x4 ---
+    IQL lineal: convergencia=13.190 (epoch conv=62)
+    IQL exponencial: convergencia=13.622 (epoch conv=106)
+    JAL-GT lineal: convergencia=12.471 (epoch conv=131)
+    JAL-GT exponencial: convergencia=11.844 (epoch conv=148)
+
+--- Tamaño 6x6 ---
+    IQL lineal: convergencia=11.985 (epoch conv=116)
+    IQL exponencial: convergencia=11.044 (epoch conv=61)
+    JAL-GT lineal: convergencia=9.011 (epoch conv=129)
+    JAL-GT exponencial: convergencia=8.447 (epoch conv=125)
+
+>> CONCLUSIÓN EXP8: comparar epoch de convergencia entre estrategias.
+   Si el exponencial converge antes en 6x6, confirma la hipótesis.
+
+==============================================================================
+  EXPERIMENTO 9 (+0.5) -- Generalización a mapas no vistos
+==============================================================================
+Objetivo: medir rendimiento de políticas entrenadas en mapas NUEVOS.
+Train seeds: [0, 1, 2]... | Test seeds: [100, 101, 102]...
+Hipótesis: como obs_to_state es independiente de la posición absoluta,
+  los mapas comparten muchos estados y esperamos buena generalización.
+  La cobertura de estados es la clave: si es alta, generalizar es trivial.
+    IQL 4x4 d=0.1: train=0.95 test=0.72 gap=+0.23 cobertura=54.5%
+    IQL 6x6 d=0.1: train=1.16 test=0.49 gap=+0.67 cobertura=45.7%
+    IQL 10x10 d=0.1: train=0.91 test=0.81 gap=+0.10 cobertura=68.2%
+    IQL 4x4 d=0.25: train=1.64 test=0.04 gap=+1.59 cobertura=52.0%
+    IQL 6x6 d=0.25: train=0.82 test=0.38 gap=+0.44 cobertura=55.9%
+    IQL 10x10 d=0.25: train=0.48 test=0.04 gap=+0.44 cobertura=60.0%
+    JAL-GT 4x4 d=0.1: train=1.28 test=0.72 gap=+0.56 cobertura=60.6%
+    JAL-GT 6x6 d=0.1: train=0.82 test=0.26 gap=+0.56 cobertura=65.4%
+    JAL-GT 10x10 d=0.1: train=1.02 test=0.83 gap=+0.20 cobertura=63.2%
+    JAL-GT 4x4 d=0.25: train=1.41 test=0.04 gap=+1.36 cobertura=58.3%
+    JAL-GT 6x6 d=0.25: train=0.49 test=0.39 gap=+0.11 cobertura=50.0%
+    JAL-GT 10x10 d=0.25: train=0.15 test=-0.07 gap=+0.23 cobertura=56.0%
+
+>> CONCLUSIÓN EXP9: si la cobertura de estados es alta, la generalización
+   es casi trivial (consecuencia de la representación local de obs_to_state).
+   Donde la cobertura baja (mapas grandes/densos), el gap train-test crece.
+
+==============================================================================
+  EXPERIMENTO 10 (+0.5) -- Parejas heterogéneas de conceptos de solución
+==============================================================================
+Objetivo: entrenar parejas JAL-GT con conceptos DISTINTOS por agente
+(Nash + Pareto) y compararlas contra homogéneas (Nash+Nash, Pareto+Pareto).
+epsilon=0.5 | gamma=0.9
+Hipótesis: un agente que busca el óptimo de Pareto conviviendo con uno
+  que busca el equilibrio de Nash genera conflicto de incentivos; esperamos
+  rendimiento intermedio o inferior al de la mejor pareja homogénea.
+
+--- Densidad 0.1 ---
+    Nash+Nash: convergencia=11.627
+    Pareto+Pareto: convergencia=9.011
+    Nash+Pareto: convergencia=9.841
+    -> La pareja heterogénea (9.84) rinde por debajo de la mejor homogénea (11.63): conflicto de incentivos (hipótesis).
+
+--- Densidad 0.25 ---
+    Nash+Nash: convergencia=4.307
+    Pareto+Pareto: convergencia=4.491
+    Nash+Pareto: convergencia=4.596
+    -> La pareja heterogénea (4.60) iguala o supera a la mejor homogénea (4.49): no hay penalización por mezclar.
+
+==============================================================================
+  BATERÍA COMPLETADA
+==============================================================================
+Tiempo total: 311.2 minutos
+Hiperparámetros óptimos usados: epsilon_max=0.5, gamma=0.9
+Resultados en: results/ | Plots en: plots/
+Análisis SVG en: svg_analysis/ | Animaciones en: renders/

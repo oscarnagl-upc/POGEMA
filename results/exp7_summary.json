@@ -1,0 +1,11 @@
+{
+  "experiment": "exp7_concepts_scaling",
+  "data": {
+    "Pareto_size4": 12.470984794854777,
+    "Minimax_size4": -1.513543302387268,
+    "Pareto_size10": 9.897593469063988,
+    "Minimax_size10": -2.422407041172295
+  },
+  "gap_small": 13.984528097242045,
+  "gap_large": 12.320000510236284
+}

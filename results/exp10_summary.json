@@ -1,0 +1,11 @@
+{
+  "experiment": "exp10_heterogeneous",
+  "data": {
+    "Nash+Nash_d0.1": 11.627200216206063,
+    "Pareto+Pareto_d0.1": 9.010733579800482,
+    "Nash+Pareto_d0.1": 9.841456951765764,
+    "Nash+Nash_d0.25": 4.306844138443676,
+    "Pareto+Pareto_d0.25": 4.4906032738095245,
+    "Nash+Pareto_d0.25": 4.595970474789451
+  }
+}

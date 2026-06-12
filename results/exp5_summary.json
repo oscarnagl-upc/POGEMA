@@ -1,0 +1,80 @@
+{
+  "experiment": "exp5",
+  "density": 0.25,
+  "epsilon": 0.5,
+  "gamma": 0.9,
+  "data": {
+    "size4": {
+      "IQL": {
+        "final_collective": 14.191999999999998,
+        "conv_reward": 14.30589850399846,
+        "intra_run_std": 0.026806004472704398,
+        "inter_seed_std": 1.545670081226909,
+        "train_time": 5.480822372436523,
+        "individual_final": [
+          7.885999999999998,
+          6.305999999999999
+        ]
+      },
+      "JAL-GT": {
+        "final_collective": 13.719000000000003,
+        "conv_reward": 13.855164712815276,
+        "intra_run_std": 0.4264255530234432,
+        "inter_seed_std": 2.042706293131737,
+        "train_time": 38.295547413825986,
+        "individual_final": [
+          7.078999999999998,
+          6.639999999999999
+        ]
+      }
+    },
+    "size6": {
+      "IQL": {
+        "final_collective": 6.536,
+        "conv_reward": 6.576788113914985,
+        "intra_run_std": 0.17718752540549162,
+        "inter_seed_std": 1.1273437807519056,
+        "train_time": 8.244611787796021,
+        "individual_final": [
+          3.192000000000001,
+          3.3440000000000003
+        ]
+      },
+      "JAL-GT": {
+        "final_collective": 4.455,
+        "conv_reward": 4.4906032738095245,
+        "intra_run_std": 0.5794693789888316,
+        "inter_seed_std": 0.7388267726605474,
+        "train_time": 55.99201779365539,
+        "individual_final": [
+          2.2150000000000007,
+          2.2399999999999998
+        ]
+      }
+    },
+    "size10": {
+      "IQL": {
+        "final_collective": 4.409999999999999,
+        "conv_reward": 4.34456900270129,
+        "intra_run_std": 0.6236440551827283,
+        "inter_seed_std": 1.2195982945216017,
+        "train_time": 10.09278302192688,
+        "individual_final": [
+          3.8909999999999996,
+          0.519
+        ]
+      },
+      "JAL-GT": {
+        "final_collective": 2.2129999999999996,
+        "conv_reward": 1.9662428962454281,
+        "intra_run_std": 0.5973574703439481,
+        "inter_seed_std": 1.4231025964420134,
+        "train_time": 53.77395808696747,
+        "individual_final": [
+          2.689000000000001,
+          -0.47599999999999987
+        ]
+      }
+    }
+  }
+}
