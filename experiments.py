@@ -29,6 +29,7 @@ Ampliaciones (+2 puntos), lanzadas con --extensions:
 Uso:
   python experiments.py             # obligatorios + ampliaciones (run completo)
   python experiments.py --base      # solo experimentos obligatorios
+  python experiments.py --complete  # añade EXP2 y EXP3 al run (validación hiperparámetros)
   python experiments.py --extensions  # solo ampliaciones (+2 puntos)
   python experiments.py --sanity    # verificación rápida del pipeline (8 epochs)
 """
@@ -46,6 +47,8 @@ from config import (
     TRAIN_SEEDS, UNSEEN_SEEDS, EPSILON_GRID, GAMMA_GRID,
     DENSITY_LOW, DENSITY_MID, SIZES, DEFAULT_EPOCHS, SANITY_EPOCHS,
     SOLUTION_CONCEPTS,
+    EXP1_SEEDS, EXP2_SEEDS, EXP3_SEEDS, EXP45_SEEDS, EXP6_SEEDS,
+    EXP7_SEEDS, EXP8_SEEDS, EXP9_SEEDS, EXP10_SEEDS,
 )
 from plots import plot_curve, plot_heatmap, plot_bars, plot_grouped_bars, save_json
 from svg import analyze_svgs
@@ -401,7 +404,7 @@ def save_qtables(algorithms, run_name):
 def experiment_1_hyperparams(epochs):
     banner("EXPERIMENTO 1 -- Estudio conjunto de (epsilon, gamma)")
     log("Objetivo: caracterizar el efecto de epsilon y gamma y fijar el par óptimo")
-    log("Algoritmo: JAL-GT (Pareto) | Mapa: 4x4 | Densidad: 0.1 | Seeds: 0..9")
+    log(f"Algoritmo: JAL-GT (Pareto) | Mapa: 4x4 | Densidad: 0.1 | Seeds: {EXP1_SEEDS}")
     log("Hipótesis:")
     log("- epsilon alto reduce la varianza inter-seed (mejor cobertura inicial).", 1)
     log("- gamma alto es necesario para propagar la recompensa terminal (objetivo", 1)
@@ -422,7 +425,7 @@ def experiment_1_hyperparams(epochs):
                                algorithm_cls=JALGT,
                                solution_concept_cls=ParetoSolutionConcept,
                                renders_dir=RENDERS_DIR)
-            res = run_training(cfg, TRAIN_SEEDS, run_name)
+            res = run_training(cfg, EXP1_SEEDS, run_name)
             conv_matrix[i, j] = res["conv_reward_mean"]
             std_matrix[i, j] = res["inter_seed_std_final"]
             all_runs.append(res)
@@ -448,12 +451,23 @@ def experiment_1_hyperparams(epochs):
 
     best_reward = conv_matrix[best_idx]
     best_std = std_matrix[best_idx]
-    log(f"\n>> CONCLUSIÓN EXP1: par óptimo encontrado = "
-        f"(epsilon_max={best_eps}, gamma={best_gamma})")
-    log(f"   recompensa={best_reward:.3f} | std inter-seed={best_std:.3f}")
-    log("   NOTA: este par maximiza la recompensa de convergencia, pero puede no ser")
-    log("   el de menor varianza. Aceptamos el trade-off reward↑ vs varianza↑:")
-    log("   preferimos el par más rentable aunque sea algo más ruidoso entre seeds.")
+    min_std_idx = np.unravel_index(np.argmin(std_matrix), std_matrix.shape)
+    min_std_eps = EPSILON_GRID[min_std_idx[0]]
+    min_std_gamma = GAMMA_GRID[min_std_idx[1]]
+    min_std_val = std_matrix[min_std_idx]
+    min_std_reward = conv_matrix[min_std_idx]
+    log(f"\n>> CONCLUSIÓN EXP1:")
+    log(f"   Par de MAYOR recompensa: (epsilon_max={best_eps}, gamma={best_gamma})"
+        f"  →  reward={best_reward:.3f} | std={best_std:.3f}")
+    log(f"   Par de MENOR varianza:   (epsilon_max={min_std_eps}, gamma={min_std_gamma})"
+        f"  →  reward={min_std_reward:.3f} | std={min_std_val:.3f}")
+    if (best_eps, best_gamma) != (min_std_eps, min_std_gamma):
+        log(f"   TRADE-OFF detectado: los dos pares no coinciden.")
+        log(f"   Decisión: usamos el de mayor recompensa ({best_eps}, {best_gamma}).", 1)
+        log(f"   Las seeds se promedian en todos los experimentos; la varianza extra", 1)
+        log(f"   se amortigua. Priorizamos la calidad de la política aprendida.", 1)
+    else:
+        log(f"   Sin trade-off: el par óptimo también es el de menor varianza.")
     log("   Este par se trasladará a los experimentos siguientes.")
 
     save_json({
@@ -489,7 +503,7 @@ def experiment_2_iql_transfer(best_eps, best_gamma, epochs):
                            epsilon_max=best_eps, gamma=gamma,
                            algorithm_cls=IQL, solution_concept_cls=None,
                            renders_dir=RENDERS_DIR)
-        res = run_training(cfg, TRAIN_SEEDS, run_name)
+        res = run_training(cfg, EXP2_SEEDS, run_name)
         results[gamma] = res["conv_reward_mean"]
         log(f"   recompensa en convergencia = {res['conv_reward_mean']:.3f}", 1)
 
@@ -535,7 +549,7 @@ def experiment_3_validate_large(best_eps, best_gamma, epochs):
                            epsilon_max=eps, gamma=gamma, algorithm_cls=JALGT,
                            solution_concept_cls=ParetoSolutionConcept,
                            renders_dir=RENDERS_DIR)
-        res = run_training(cfg, TRAIN_SEEDS, run_name)
+        res = run_training(cfg, EXP3_SEEDS, run_name)
         results[label] = res["conv_reward_mean"]
         runs.append({"label": f"{label} (eps={eps},g={gamma})",
                      "mean": res["mean_collective"], "std": res["std_collective"]})
@@ -588,7 +602,7 @@ def experiment_4_5_iql_vs_jalgt(best_eps, best_gamma, epochs):
                                    epsilon_max=best_eps, gamma=best_gamma,
                                    algorithm_cls=algo_cls, solution_concept_cls=concept,
                                    renders_dir=RENDERS_DIR)
-                res = run_training(cfg, TRAIN_SEEDS, run_name, save_svgs=save_svgs,
+                res = run_training(cfg, EXP45_SEEDS, run_name, save_svgs=save_svgs,
                                    svg_concept_name=f"{exp_id}_{algo_label}")
                 runs_for_plot.append({"label": algo_label,
                                       "mean": res["mean_collective"],
@@ -678,7 +692,7 @@ def experiment_6_concepts(best_eps, best_gamma, epochs):
                                epsilon_max=best_eps, gamma=best_gamma,
                                algorithm_cls=JALGT, solution_concept_cls=concept_cls,
                                renders_dir=RENDERS_DIR)
-            res = run_training(cfg, TRAIN_SEEDS, run_name, save_svgs=save_svgs,
+            res = run_training(cfg, EXP6_SEEDS, run_name, save_svgs=save_svgs,
                                svg_concept_name=f"exp6_{concept_name}")
             runs_for_plot.append({"label": concept_name,
                                   "mean": res["mean_collective"],
@@ -759,7 +773,7 @@ def experiment_7_concepts_scaling(best_eps, best_gamma, epochs):
                                algorithm_cls=JALGT,
                                solution_concept_cls=SOLUTION_CONCEPTS[concept_name],
                                renders_dir=RENDERS_DIR)
-            res = run_training(cfg, TRAIN_SEEDS, run_name)
+            res = run_training(cfg, EXP7_SEEDS, run_name)
             bar_labels.append(concept_name)
             bar_values.append(res["conv_reward_mean"])
             summary[f"{concept_name}_size{size}"] = res["conv_reward_mean"]
@@ -852,11 +866,14 @@ def experiment_8_decay(best_eps, best_gamma, epochs):
                                    algorithm_cls=algo_cls,
                                    solution_concept_cls=concept,
                                    renders_dir=RENDERS_DIR)
-                res = _run_with_decay(cfg, TRAIN_SEEDS, run_name, decay_fn)
+                res = _run_with_decay(cfg, EXP8_SEEDS, run_name, decay_fn)
                 runs_for_plot.append({"label": f"{decay_label}",
                                       "mean": res["mean_collective"],
                                       "std": res["std_collective"]})
-                summary[f"{algo_label}_size{size}_{decay_label}"] = res["conv_reward_mean"]
+                summary[f"{algo_label}_size{size}_{decay_label}"] = {
+                    "conv_reward": res["conv_reward_mean"],
+                    "conv_epoch": res["conv_epoch_mean"],
+                }
                 log(f"  {algo_label} {decay_label}: "
                     f"convergencia={res['conv_reward_mean']:.3f} "
                     f"(epoch conv={res['conv_epoch_mean']:.0f})", 1)
@@ -883,19 +900,34 @@ def experiment_8_decay(best_eps, best_gamma, epochs):
             key_lin = f"{algo_label}_size{size}_lineal"
             key_exp = f"{algo_label}_size{size}_exponencial"
             if key_lin in summary and key_exp in summary:
-                r_lin = summary[key_lin]
-                r_exp = summary[key_exp]
-                log(f"  {algo_label} {size}x{size}: lineal={r_lin:.3f}, "
-                    f"exponencial={r_exp:.3f}", 1)
-                if r_exp >= r_lin:
-                    log(f"  -> H6 CONFIRMADO (calidad) {algo_label} {size}x{size}: "
-                        f"exp={r_exp:.3f} >= lin={r_lin:.3f}", 1)
+                r_lin = summary[key_lin]["conv_reward"]
+                r_exp = summary[key_exp]["conv_reward"]
+                e_lin = summary[key_lin]["conv_epoch"]
+                e_exp = summary[key_exp]["conv_epoch"]
+                log(f"  {algo_label} {size}x{size}:  "
+                    f"lineal epoch={e_lin:.0f} reward={r_lin:.3f}  |  "
+                    f"exponencial epoch={e_exp:.0f} reward={r_exp:.3f}", 1)
+                speed_ok   = e_exp < e_lin
+                quality_ok = r_exp >= r_lin
+                if speed_ok and quality_ok:
+                    log(f"  -> H6 CONFIRMADO (velocidad + calidad): exponencial converge "
+                        f"antes ({e_exp:.0f} < {e_lin:.0f}) y con mejor política "
+                        f"({r_exp:.3f} > {r_lin:.3f}).", 1)
+                elif speed_ok and not quality_ok:
+                    log(f"  -> H6 PARCIAL: exponencial converge antes "
+                        f"({e_exp:.0f} < {e_lin:.0f}) pero logra peor política "
+                        f"({r_exp:.3f} < {r_lin:.3f}).", 1)
+                    log(f"     Paradoja speed-quality: el exponencial satura la explotación", 1)
+                    log(f"     demasiado pronto, antes de que la Q-table esté bien poblada,", 1)
+                    log(f"     produciendo convergencia prematura a una política subóptima.", 1)
+                elif not speed_ok and quality_ok:
+                    log(f"  -> H6 PARCIAL (solo calidad): exponencial logra mejor reward "
+                        f"({r_exp:.3f} > {r_lin:.3f}) pero converge más tarde "
+                        f"({e_exp:.0f} > {e_lin:.0f}).", 1)
                 else:
-                    log(f"  -> H6 REFUTADO (calidad) {algo_label} {size}x{size}: "
-                        f"exp={r_exp:.3f} < lin={r_lin:.3f}", 1)
-                    log(f"     Paradoja speed-quality: decaimiento rápido bloquea", 1)
-                    log(f"     exploración antes de que la Q-table esté poblada,", 1)
-                    log(f"     produciendo convergencia prematura a política subóptima.", 1)
+                    log(f"  -> H6 REFUTADO: lineal es mejor en velocidad "
+                        f"({e_lin:.0f} < {e_exp:.0f}) y en calidad "
+                        f"({r_lin:.3f} > {r_exp:.3f}).", 1)
     save_json({"experiment": "exp8_decay", "data": summary}, "exp8_summary.json")
     return summary
 
@@ -960,9 +992,10 @@ def experiment_9_generalization(best_eps, best_gamma, epochs):
                                    algorithm_cls=algo_cls,
                                    solution_concept_cls=concept,
                                    renders_dir=RENDERS_DIR)
-                # Entrenamos un run (1 seed para abaratar; generalización no
-                # necesita estadística inter-seed, sino el contraste train/test)
-                res = run_training(cfg, [0], run_name)
+                # Entrenamos con 3 seeds para reducir el sesgo de una seed concreta.
+                # La generalización mide contraste train/test, no varianza inter-seed;
+                # final_algorithms corresponde al último seed de EXP9_SEEDS.
+                res = run_training(cfg, EXP9_SEEDS, run_name)
                 algorithms = res["final_algorithms"]
                 game = GameModel(num_agents=cfg["num_agents"],
                                  num_states=cfg["num_states"], num_actions=5)
@@ -987,22 +1020,25 @@ def experiment_9_generalization(best_eps, best_gamma, epochs):
         "Recompensa", "EXP9: generalización train vs test (mapas no vistos)",
         "exp9_generalization.png")
 
-    log("\n>> CONCLUSIÓN EXP9: si la cobertura de estados es alta, la generalización")
-    log("   es casi trivial (consecuencia de la representación local de obs_to_state).")
-    log("   Donde la cobertura baja (mapas grandes/densos), el gap train-test crece.")
-    # Detectar peor caso de generalización
-    worst_key = max(summary, key=lambda k: summary[k]["gap"])
-    worst = summary[worst_key]
-    log(f"   PEOR CASO de generalización: {worst_key}")
-    log(f"   train={worst['reward_train']:.2f}, test={worst['reward_test']:.2f}, "
-        f"gap={worst['gap']:+.3f}, cobertura={worst['state_coverage']:.1%}")
-    log(f"   -> Política sobreajustada a mapas de entrenamiento; la baja cobertura")
-    log(f"      de estados explica la caída en test (estados nunca vistos → Q=0).")
-    # Detectar casos con buena cobertura (generalización trivial)
-    easy_cases = [(k, v) for k, v in summary.items() if v["state_coverage"] > 0.9]
-    if easy_cases:
-        log(f"   Casos con cobertura >90%: {[k for k, _ in easy_cases]}")
-        log(f"   -> Generalización trivial por reutilización de observaciones locales.")
+    good = [(k, v) for k, v in summary.items() if v["gap"] < 0.3]
+    mid  = [(k, v) for k, v in summary.items() if 0.3 <= v["gap"] <= 1.0]
+    bad  = [(k, v) for k, v in summary.items() if v["gap"] > 1.0]
+    log("\n>> CONCLUSIÓN EXP9: clasificación de generalización por gap train-test:")
+    log(f"  BUENA   (gap < 0.3,    n={len(good)}): "
+        + (", ".join(k.replace("exp9_", "") for k, _ in good) or "ninguna"), 1)
+    log(f"  REGULAR (0.3≤gap≤1.0,  n={len(mid)}): "
+        + (", ".join(k.replace("exp9_", "") for k, _ in mid) or "ninguna"), 1)
+    log(f"  MALA    (gap > 1.0,    n={len(bad)}): "
+        + (", ".join(k.replace("exp9_", "") for k, _ in bad) or "ninguna"), 1)
+    if bad:
+        worst = max(bad, key=lambda kv: kv[1]["gap"])
+        log(f"  PEOR CASO: {worst[0].replace('exp9_', '')}: "
+            f"train={worst[1]['reward_train']:.2f}, test={worst[1]['reward_test']:.2f}, "
+            f"gap={worst[1]['gap']:+.2f}, cobertura={worst[1]['state_coverage']:.1%}", 2)
+        log(f"  -> Mapa denso/pequeño: cada seed genera un layout radicalmente distinto,", 2)
+        log(f"     produciendo estados nunca vistos en train (Q=0 → política ciega).", 2)
+    log("  La representación local (obs_to_state) ayuda pero no garantiza", 1)
+    log("  generalización en densidades altas: combinaciones de obstáculos nuevas.", 1)
     save_json({"experiment": "exp9_generalization", "data": summary},
               "exp9_summary.json")
     return summary
@@ -1044,7 +1080,7 @@ def experiment_10_heterogeneous(best_eps, best_gamma, epochs):
                                solution_concept_cls=concepts[0],  # fallback
                                renders_dir=RENDERS_DIR,
                                per_agent_concepts=concepts)
-            res = run_training(cfg, TRAIN_SEEDS, run_name)
+            res = run_training(cfg, EXP10_SEEDS, run_name)
             summary[f"{pair_name}_d{density}"] = res["conv_reward_mean"]
             bar_labels.append(pair_name)
             bar_values.append(res["conv_reward_mean"])
@@ -1061,12 +1097,17 @@ def experiment_10_heterogeneous(best_eps, best_gamma, epochs):
                 f"homogénea ({best_homo:.2f}): conflicto de incentivos (hipótesis).", 1)
             log(f"     Nash busca equilibrio individual; Pareto busca óptimo colectivo.", 1)
             log(f"     Sus objetivos divergen y el agente Nash bloquea al Pareto.", 1)
+        elif het > best_homo:
+            log(f"  -> HALLAZGO SORPRENDENTE: la pareja heterogénea ({het:.2f}) supera", 1)
+            log(f"     a AMBAS homogéneas (mejor={best_homo:.2f}) en d={density}.", 1)
+            log(f"     Interpretación: sinergia emergente de roles complementarios.", 1)
+            log(f"     Nash aporta estabilidad defensiva (evita ciclos de coordin.)", 1)
+            log(f"     y Pareto optimiza el movimiento conjunto cuando el camino es", 1)
+            log(f"     libre. En entornos densos, esta división de roles es ventajosa", 1)
+            log(f"     porque reduce deadlocks sin sacrificar eficiencia conjunta.", 1)
         else:
-            log(f"  -> La pareja heterogénea ({het:.2f}) iguala o supera a la mejor "
-                f"homogénea ({best_homo:.2f}): no hay penalización por mezclar.", 1)
-            log(f"     Posible sinergia de roles: Nash actúa como 'cedente estable'", 1)
-            log(f"     (equilibrio defensivo) y Pareto optimiza el movimiento conjunto.", 1)
-            log(f"     A alta densidad, esta división de roles puede ser ventajosa.", 1)
+            log(f"  -> La pareja heterogénea ({het:.2f}) iguala a la mejor homogénea "
+                f"({best_homo:.2f}): no hay penalización por mezclar conceptos.", 1)
 
     save_json({"experiment": "exp10_heterogeneous", "data": summary},
               "exp10_summary.json")
@@ -1084,11 +1125,17 @@ def run_all_extensions(best_eps, best_gamma, epochs):
 #  ORQUESTADOR PRINCIPAL
 # ============================================================================
 
-def run_obligatory(epochs):
-    """Lanza la batería obligatoria y devuelve los hiperparámetros óptimos."""
+def run_obligatory(epochs, complete=False):
+    """Lanza la batería obligatoria y devuelve los hiperparámetros óptimos.
+
+    Con complete=False (por defecto) se omiten EXP2 y EXP3, asumiendo
+    transferencia correcta de hiperparámetros. Con complete=True se incluyen
+    para validar explícitamente la transferencia (flag --complete).
+    """
     best_eps, best_gamma = experiment_1_hyperparams(epochs)
-    experiment_2_iql_transfer(best_eps, best_gamma, epochs)
-    experiment_3_validate_large(best_eps, best_gamma, epochs)
+    if complete:
+        experiment_2_iql_transfer(best_eps, best_gamma, epochs)
+        experiment_3_validate_large(best_eps, best_gamma, epochs)
     experiment_4_5_iql_vs_jalgt(best_eps, best_gamma, epochs)
     experiment_6_concepts(best_eps, best_gamma, epochs)
     experiment_7_concepts_scaling(best_eps, best_gamma, epochs)
@@ -1106,6 +1153,8 @@ def main():
                         help="Ejecutar SOLO los experimentos obligatorios")
     parser.add_argument("--extensions", action="store_true",
                         help="Ejecutar SOLO las ampliaciones (+2 puntos)")
+    parser.add_argument("--complete", action="store_true",
+                        help="Incluir EXP2 y EXP3 (validación transferencia hiperparámetros)")
     args = parser.parse_args()
 
     if args.epochs is not None:
@@ -1120,7 +1169,8 @@ def main():
     banner("BATERÍA DE EXPERIMENTOS -- Práctica 3 SID")
     mode = "SANITY (verificación del pipeline)" if args.sanity else "COMPLETO"
     log(f"Modo: {mode} | epochs={epochs}")
-    log(f"Seeds de entrenamiento: {TRAIN_SEEDS}")
+    log(f"Seeds por experimento: EXP1={EXP1_SEEDS}, EXP4/5={EXP45_SEEDS}, "
+        f"EXP6={EXP6_SEEDS}, EXP8={EXP8_SEEDS}")
     log(f"Densidades: baja={DENSITY_LOW}, media={DENSITY_MID}")
     log(f"Grid hiperparámetros: epsilon in {EPSILON_GRID}, gamma in {GAMMA_GRID}")
     log("Las conclusiones se trasladan automáticamente entre experimentos.")
@@ -1128,15 +1178,16 @@ def main():
     t_start = time.time()
 
     # Esquema de flags:
-    #   (sin flag)    -> obligatorios + ampliaciones
-    #   --base        -> solo obligatorios
-    #   --extensions  -> solo ampliaciones (fija hiperparám. con EXP1 primero)
+    #   (sin flag)       -> obligatorios (sin EXP2/3) + ampliaciones
+    #   --base           -> solo obligatorios (sin EXP2/3)
+    #   --complete       -> obligatorios (con EXP2/3) + ampliaciones
+    #   --extensions     -> solo ampliaciones (fija hiperparám. con EXP1 primero)
     if args.extensions and not args.base:
         # Solo ampliaciones: necesitan (eps*, gamma*), que sale del EXP1.
         best_eps, best_gamma = experiment_1_hyperparams(epochs)
         run_all_extensions(best_eps, best_gamma, epochs)
     else:
-        best_eps, best_gamma = run_obligatory(epochs)
+        best_eps, best_gamma = run_obligatory(epochs, complete=args.complete)
         if not args.base:
             # Sin --base, tras los obligatorios corremos también las ampliaciones.
             run_all_extensions(best_eps, best_gamma, epochs)

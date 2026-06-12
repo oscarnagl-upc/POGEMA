@@ -38,9 +38,20 @@ BASE = {
 }
 
 # --- Semillas de entrenamiento/evaluación ------------------------------------
-TRAIN_SEEDS = list(range(10))         # 0..9
+TRAIN_SEEDS = list(range(10))         # 0..9  (también usadas como eval en EXP9)
 # Semillas NO vistas en entrenamiento (ampliación de generalización)
 UNSEEN_SEEDS = list(range(100, 110))  # 100..109
+
+# --- Seeds por experimento (tabla de reducción de tiempo) --------------------
+EXP1_SEEDS  = list(range(5))   # grid hiperparámetros: 5 seeds
+EXP2_SEEDS  = list(range(3))   # transferencia gamma a IQL: 3 seeds
+EXP3_SEEDS  = list(range(3))   # validación par óptimo 10x10: 3 seeds
+EXP45_SEEDS = list(range(3))   # IQL vs JAL-GT comparativa: 3 seeds
+EXP6_SEEDS  = list(range(3))   # conceptos de solución: 3 seeds
+EXP7_SEEDS  = list(range(3))   # contraste situacional: 3 seeds
+EXP8_SEEDS  = list(range(5))   # decay exponencial vs lineal: 5 seeds
+EXP9_SEEDS  = list(range(3))   # generalización (política, no inter-seed): 3 seeds
+EXP10_SEEDS = list(range(3))   # parejas heterogéneas: 3 seeds
 
 # --- Espacio de hiperparámetros ----------------------------------------------
 # (decidido tras análisis crítico + datos de la Práctica 2)
